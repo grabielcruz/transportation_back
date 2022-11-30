@@ -7,7 +7,7 @@ import (
 
 func GetMoneyAccounts() []MoneyAccount {
 	var moneyAccounts []MoneyAccount
-	rows, err := database.Db.Query("SELECT * FROM money_accounts;")
+	rows, err := database.DB.Query("SELECT * FROM money_accounts;")
 	errors_handler.CheckError(err)
 	defer rows.Close()
 
@@ -23,7 +23,7 @@ func GetMoneyAccounts() []MoneyAccount {
 
 func CreateMoneyAccount(moneyAccount MoneyAccount) MoneyAccount {
 	var nma MoneyAccount
-	row := database.Db.QueryRow(
+	row := database.DB.QueryRow(
 		"INSERT INTO money_accounts (name, balance, is_cash, currency) VALUES ($1, $2, $3, $4) RETURNING *;",
 		moneyAccount.Name, moneyAccount.Balance, moneyAccount.IsCash, moneyAccount.Currency)
 	err := row.Scan(&nma.ID, &nma.Name, &nma.Balance, &nma.IsCash, &nma.Currency, &nma.CreatedAt, &nma.UpdatedAt)
