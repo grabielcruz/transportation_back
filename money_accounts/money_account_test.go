@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
-	"github.com/grabielcruz/transportation_back/utility"
 )
 
 // TestMoneyAccountServices contains a group of test related
@@ -29,7 +28,7 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Create one money account", func(t *testing.T) {
-		accountFields := GenereatAccountFields()
+		accountFields := GenerateAccountFields()
 		createdMoneyAccount := CreateMoneyAccount(accountFields)
 		if accountFields.Name != createdMoneyAccount.Name {
 			t.Fatalf(`createdMoneyAccount.Name = %v, expected %v`, createdMoneyAccount.Name, accountFields.Name)
@@ -48,8 +47,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	deleteAllMoneyAccounts()
 
 	t.Run("Create two money accounts and get and slice of accounts", func(t *testing.T) {
-		CreateMoneyAccount(GenereatAccountFields())
-		CreateMoneyAccount(GenereatAccountFields())
+		CreateMoneyAccount(GenerateAccountFields())
+		CreateMoneyAccount(GenerateAccountFields())
 		moneyAccounts := GetMoneyAccounts()
 		length := len(moneyAccounts)
 		if length != 2 {
@@ -60,7 +59,7 @@ func TestMoneyAccountServices(t *testing.T) {
 	deleteAllMoneyAccounts()
 
 	t.Run("Create one money account and get it", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenereatAccountFields())
+		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		obtainedMoneyAccount, err := GetOneMoneyAccount(createdMoneyAccount.ID)
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -82,13 +81,15 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Create one money account and delete it", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenereatAccountFields())
+		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		DeleteOneMoneyAccount(createdMoneyAccount.ID)
 		_, err := GetOneMoneyAccount(createdMoneyAccount.ID)
 		if err == nil {
 			t.Fatalf(`Should receive error when requesting deleted money account`)
 		}
 	})
+
+	deleteAllMoneyAccounts()
 
 	t.Run("Error when attempting to delete an unexisting account", func(t *testing.T) {
 		var zeroUUID uuid.UUID
@@ -98,11 +99,9 @@ func TestMoneyAccountServices(t *testing.T) {
 		}
 	})
 
-	deleteAllMoneyAccounts()
-
 	t.Run("It should create and update one money account", func(t *testing.T) {
-		createFields := GenereatAccountFields()
-		updateFields := GenereatAccountFields()
+		createFields := GenerateAccountFields()
+		updateFields := GenerateAccountFields()
 		createdAccount := CreateMoneyAccount(createFields)
 		updatedAccount, err := UpdateMoneyAccount(createdAccount.ID, updateFields)
 		errors_handler.CheckError(err)
@@ -132,20 +131,22 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("It should create an account and update its balance", func(t *testing.T) {
-		balance := utility.GetRandomBalance()
-		createdMoneyAccount := CreateMoneyAccount(GenereatAccountFields())
+		balance := GenerateAccountBalace()
+		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		updatedAccount, _ := UpdatedMoneyAccountsBalance(createdMoneyAccount.ID, balance)
 		if createdMoneyAccount.ID != updatedAccount.ID {
 			t.Fatalf(`Updated account does not have the right id, want %v, got %v`, createdMoneyAccount.ID, updatedAccount.ID)
 		}
-		if updatedAccount.Balance != balance {
+		if updatedAccount.Balance != balance.Balance {
 			t.Fatalf(`Updated account' balance is %v, expected %v`, updatedAccount.Balance, balance)
 		}
 	})
 
+	deleteAllMoneyAccounts()
+
 	t.Run("It should get error when updating balance's account with wrong id", func(t *testing.T) {
 		var zeroUUID uuid.UUID
-		balance := utility.GetRandomBalance()
+		balance := GenerateAccountBalace()
 		_, err := UpdatedMoneyAccountsBalance(zeroUUID, balance)
 		if err == nil {
 			t.Fatalf(`UpdateMoneyAccountsBalance should generate error, instead generated nil`)

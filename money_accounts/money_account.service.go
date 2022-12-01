@@ -59,10 +59,10 @@ func UpdateMoneyAccount(account_id uuid.UUID, fields MoneyAccountFields) (MoneyA
 	return uma, nil
 }
 
-func UpdatedMoneyAccountsBalance(account_id uuid.UUID, balance float64) (MoneyAccount, error) {
+func UpdatedMoneyAccountsBalance(account_id uuid.UUID, balance MoneyAccountBalance) (MoneyAccount, error) {
 	var uma MoneyAccount
 	row := database.DB.QueryRow("UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING *;",
-		balance, account_id)
+		balance.Balance, account_id)
 	err := row.Scan(&uma.ID, &uma.Name, &uma.Balance, &uma.IsCash, &uma.Currency, &uma.CreatedAt, &uma.UpdatedAt)
 	if err != nil {
 		if errors_handler.CheckEmptyRowError(err) {

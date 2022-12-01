@@ -6,24 +6,28 @@ import (
 )
 
 func GenerateMoneyAccount() MoneyAccount {
-	fields := MoneyAccountFields{
-		Name:     utility.GetRandomString(25),
-		IsCash:   utility.GetRandomBoolean(),
-		Currency: utility.GetRandomCurrency(),
-	}
+	fields := GenerateAccountFields()
+	balance := GenerateAccountBalace()
 	moneyAccount := MoneyAccount{
-		ID:                 uuid.New(),
-		Balance:            utility.GetRandomBalance(),
-		MoneyAccountFields: fields,
+		ID:                  uuid.New(),
+		MoneyAccountFields:  fields,
+		MoneyAccountBalance: balance,
 	}
 	return moneyAccount
 }
 
-func GenereatAccountFields() MoneyAccountFields {
+func GenerateAccountFields() MoneyAccountFields {
 	fields := MoneyAccountFields{
 		Name:     utility.GetRandomString(25),
 		IsCash:   utility.GetRandomBoolean(),
 		Currency: utility.GetRandomCurrency(),
 	}
 	return fields
+}
+
+func GenerateAccountBalace() MoneyAccountBalance {
+	balance := MoneyAccountBalance{
+		Balance: utility.GetRandomBalance(),
+	}
+	return balance
 }
