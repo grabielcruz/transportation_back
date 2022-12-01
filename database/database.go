@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 
 	"github.com/grabielcruz/transportation_back/environment"
@@ -13,21 +14,22 @@ import (
 
 var DB *sql.DB
 
-func SetupDB() {
+func SetupDB(mode string) {
 	var err error
 
-	myEnv := environment.LoadEnvironment()
+	myEnv := environment.LoadEnvironment(mode)
 
 	host := myEnv["host"]
 	strPort := myEnv["port"]
 	user := myEnv["user"]
 	password := myEnv["password"]
-	DBname := myEnv["DBname"]
+	dbname := myEnv["dbname"]
 
 	port, _ := strconv.Atoi(strPort)
 	errors_handler.CheckError(err)
 
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s DBname=%s sslmode=disable", host, port, user, password, DBname)
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+	fmt.Println(psqlInfo)
 	DB, err = sql.Open("postgres", psqlInfo)
 	errors_handler.CheckError(err)
 
@@ -41,7 +43,13 @@ func GetDB() *sql.DB {
 	return DB
 }
 
-func ResetDB
+func CreateTables(sqlPath string) {
+	dat, err := os.ReadFile(sqlPath)
+	errors_handler.CheckError(err)
+	sqlStr := string(dat)
+	_, err = DB.Exec(sqlStr)
+	errors_handler.CheckError(err)
+}
 
 func CloseConnection() error {
 	return DB.Close()

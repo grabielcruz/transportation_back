@@ -5,9 +5,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func LoadEnvironment() map[string]string {
+// LoadEnvironment
+func LoadEnvironment(envPath string) map[string]string {
 	var myEnv map[string]string
-	myEnv, err := godotenv.Read("../.env")
+	myEnv, err := godotenv.Read(envPath)
 	errors_handler.CheckError(err)
 	return myEnv
 }
