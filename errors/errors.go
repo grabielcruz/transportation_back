@@ -7,3 +7,7 @@ func CheckError(err error) {
 		log.Fatal(err)
 	}
 }
+
+func CheckEmptyRowError(err error) bool {
+	return err.Error() == "sql: no rows in result set"
+}

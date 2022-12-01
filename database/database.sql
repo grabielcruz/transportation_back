@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS money_accounts;
 CREATE TABLE money_accounts (
   id uuid DEFAULT gen_random_uuid (),
   name VARCHAR NOT NULL,
-  balance NUMERIC(17,2) NOT NULL,
+  balance NUMERIC(17,2) DEFAULT 0.00,
   is_cash BOOLEAN NOT NULL,
   currency VARCHAR NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(), 
