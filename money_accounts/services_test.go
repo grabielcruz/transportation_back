@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestMoneyAccountServices contains a group of test related
@@ -21,27 +22,16 @@ func TestMoneyAccountServices(t *testing.T) {
 	t.Run("Get empty slice of accounts initially", func(t *testing.T) {
 		var moneyAccounts []MoneyAccount
 		moneyAccounts = GetMoneyAccounts()
-		length := len(moneyAccounts)
-		if length != 0 {
-			t.Fatalf(`len(GetMoneyAccounts()) = %v, want 0`, length)
-		}
+		assert.Len(t, moneyAccounts, 0)
 	})
 
 	t.Run("Create one money account", func(t *testing.T) {
 		accountFields := GenerateAccountFields()
 		createdMoneyAccount := CreateMoneyAccount(accountFields)
-		if accountFields.Name != createdMoneyAccount.Name {
-			t.Fatalf(`createdMoneyAccount.Name = %v, expected %v`, createdMoneyAccount.Name, accountFields.Name)
-		}
-		if accountFields.IsCash != createdMoneyAccount.IsCash {
-			t.Fatalf(`createdMoneyAccount.IsCash = %v, expected %v`, createdMoneyAccount.IsCash, accountFields.IsCash)
-		}
-		if accountFields.Currency != createdMoneyAccount.Currency {
-			t.Fatalf(`createdMoneyAccount.Currency = %v, expected %v`, createdMoneyAccount.Currency, accountFields.Currency)
-		}
-		if createdMoneyAccount.Balance != 0 {
-			t.Fatalf(`createdMoneyAccount.Balance = %v, expected %v`, createdMoneyAccount.Currency, 0)
-		}
+		assert.Equal(t, accountFields.Name, createdMoneyAccount.Name)
+		assert.Equal(t, accountFields.IsCash, createdMoneyAccount.IsCash)
+		assert.Equal(t, accountFields.Currency, createdMoneyAccount.Currency)
+		assert.Equal(t, createdMoneyAccount.Balance, float64(0))
 	})
 
 	deleteAllMoneyAccounts()
@@ -50,10 +40,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		CreateMoneyAccount(GenerateAccountFields())
 		CreateMoneyAccount(GenerateAccountFields())
 		moneyAccounts := GetMoneyAccounts()
-		length := len(moneyAccounts)
-		if length != 2 {
-			t.Fatalf(`len(moneyAccounts) = %v, expected %v`, length, 2)
-		}
+		assert.Len(t, moneyAccounts, 2)
 	})
 
 	deleteAllMoneyAccounts()
@@ -61,13 +48,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	t.Run("Create one money account and get it", func(t *testing.T) {
 		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		obtainedMoneyAccount, err := GetOneMoneyAccount(createdMoneyAccount.ID)
-		if err != nil {
-			t.Fatalf(err.Error())
-		}
-		if createdMoneyAccount.ID != obtainedMoneyAccount.ID {
-			t.Fatalf(`GetOneMoneyAccount dit not returned the requested account, wanted %v, received %v`,
-				createdMoneyAccount.ID, obtainedMoneyAccount.ID)
-		}
+		assert.Nil(t, err)
+		assert.Equal(t, createdMoneyAccount.ID, obtainedMoneyAccount.ID)
 	})
 
 	deleteAllMoneyAccounts()
@@ -75,18 +57,14 @@ func TestMoneyAccountServices(t *testing.T) {
 	t.Run("Error when getting unexisting account", func(t *testing.T) {
 		var zeroUUID uuid.UUID
 		_, err := GetOneMoneyAccount(zeroUUID)
-		if err == nil {
-			t.Fatalf(`Should generate error when getting money account with zero uuid`)
-		}
+		assert.NotNil(t, err)
 	})
 
 	t.Run("Create one money account and delete it", func(t *testing.T) {
 		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		DeleteOneMoneyAccount(createdMoneyAccount.ID)
 		_, err := GetOneMoneyAccount(createdMoneyAccount.ID)
-		if err == nil {
-			t.Fatalf(`Should receive error when requesting deleted money account`)
-		}
+		assert.NotNil(t, err)
 	})
 
 	deleteAllMoneyAccounts()
@@ -94,9 +72,7 @@ func TestMoneyAccountServices(t *testing.T) {
 	t.Run("Error when attempting to delete an unexisting account", func(t *testing.T) {
 		var zeroUUID uuid.UUID
 		_, err := DeleteOneMoneyAccount(zeroUUID)
-		if err == nil {
-			t.Fatalf(`Should get an error when attempting to delete an unexisting account`)
-		}
+		assert.NotNil(t, err)
 	})
 
 	t.Run("It should create and update one money account", func(t *testing.T) {
@@ -105,18 +81,10 @@ func TestMoneyAccountServices(t *testing.T) {
 		createdAccount := CreateMoneyAccount(createFields)
 		updatedAccount, err := UpdateMoneyAccount(createdAccount.ID, updateFields)
 		errors_handler.CheckError(err)
-		if updatedAccount.ID != createdAccount.ID {
-			t.Fatalf(`UpdateMoneyAccount did not return same account's id, wanted %v, got %v`, createdAccount.ID, updatedAccount.ID)
-		}
-		if updateFields.Name != updatedAccount.Name {
-			t.Fatalf(`UpdatedMoneyAccount did not updated account's name, wanted %v, got %v`, updateFields.Name, updatedAccount.Name)
-		}
-		if updateFields.Currency != updatedAccount.Currency {
-			t.Fatalf(`UpdatedMoneyAccount did not updated account's currency, wanted %v, got %v`, updateFields.Currency, updatedAccount.Currency)
-		}
-		if updateFields.IsCash != updatedAccount.IsCash {
-			t.Fatalf(`UpdatedMoneyAccount did not updated account's IsCash property, wanted %v, got %v`, updateFields.IsCash, updatedAccount.IsCash)
-		}
+		assert.Equal(t, updatedAccount.ID, createdAccount.ID)
+		assert.Equal(t, updateFields.Name, updatedAccount.Name)
+		assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
+		assert.Equal(t, updateFields.IsCash, updatedAccount.IsCash)
 	})
 
 	deleteAllMoneyAccounts()
@@ -125,21 +93,15 @@ func TestMoneyAccountServices(t *testing.T) {
 		var zeroUUID uuid.UUID
 		var zeroFields MoneyAccountFields
 		_, err := UpdateMoneyAccount(zeroUUID, zeroFields)
-		if err == nil {
-			t.Fatalf(`UpdateMoneyAccount should generate error, instead generated nil`)
-		}
+		assert.NotNil(t, err)
 	})
 
 	t.Run("It should create an account and update its balance", func(t *testing.T) {
 		balance := GenerateAccountBalace()
 		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		updatedAccount, _ := UpdatedMoneyAccountsBalance(createdMoneyAccount.ID, balance)
-		if createdMoneyAccount.ID != updatedAccount.ID {
-			t.Fatalf(`Updated account does not have the right id, want %v, got %v`, createdMoneyAccount.ID, updatedAccount.ID)
-		}
-		if updatedAccount.Balance != balance.Balance {
-			t.Fatalf(`Updated account' balance is %v, expected %v`, updatedAccount.Balance, balance)
-		}
+		assert.Equal(t, createdMoneyAccount.ID, updatedAccount.ID)
+		assert.Equal(t, updatedAccount.Balance, balance.Balance)
 	})
 
 	deleteAllMoneyAccounts()
@@ -148,8 +110,6 @@ func TestMoneyAccountServices(t *testing.T) {
 		var zeroUUID uuid.UUID
 		balance := GenerateAccountBalace()
 		_, err := UpdatedMoneyAccountsBalance(zeroUUID, balance)
-		if err == nil {
-			t.Fatalf(`UpdateMoneyAccountsBalance should generate error, instead generated nil`)
-		}
+		assert.NotNil(t, err)
 	})
 }
