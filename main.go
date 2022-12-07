@@ -14,7 +14,7 @@ func main() {
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
 
-	r := routes.SetupRoutes()
+	r := routes.SetupAndGetRoutes()
 
 	r.Run()
 }

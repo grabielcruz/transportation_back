@@ -10,7 +10,7 @@ import (
 
 func TestBasicRoute(t *testing.T) {
 
-	r := SetupRoutes()
+	r := SetupAndGetRoutes()
 
 	t.Run("Testing initial handler", func(t *testing.T) {
 		w := httptest.NewRecorder()

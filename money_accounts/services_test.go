@@ -36,7 +36,7 @@ func TestMoneyAccountServices(t *testing.T) {
 
 	deleteAllMoneyAccounts()
 
-	t.Run("Create two money accounts and get and slice of accounts", func(t *testing.T) {
+	t.Run("Create two money accounts and get an slice of accounts", func(t *testing.T) {
 		CreateMoneyAccount(GenerateAccountFields())
 		CreateMoneyAccount(GenerateAccountFields())
 		moneyAccounts := GetMoneyAccounts()
