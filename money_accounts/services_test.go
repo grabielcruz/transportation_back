@@ -100,8 +100,8 @@ func TestMoneyAccountServices(t *testing.T) {
 		balance := GenerateAccountBalace()
 		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
 		updatedAccount, _ := UpdatedMoneyAccountsBalance(createdMoneyAccount.ID, balance)
-		assert.Equal(t, createdMoneyAccount.ID, updatedAccount.ID)
-		assert.Equal(t, updatedAccount.Balance, balance.Balance)
+		assert.Equal(t, updatedAccount.ID, createdMoneyAccount.ID)
+		assert.Equal(t, balance.Balance, updatedAccount.Balance)
 	})
 
 	deleteAllMoneyAccounts()
