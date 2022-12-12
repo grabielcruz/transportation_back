@@ -30,7 +30,7 @@ func sendJsonError(w http.ResponseWriter, httpCode int, msg string) {
 	return
 }
 func SendReadError(w http.ResponseWriter) {
-	sendJsonError(w, http.StatusBadRequest, "Invalid data type")
+	sendJsonError(w, http.StatusBadRequest, "Unable to read body of the request")
 }
 
 func SendUnmarshalError(w http.ResponseWriter) {
