@@ -20,6 +20,12 @@ type MoneyAccountFields struct {
 	Currency string `json:"currency"`
 }
 
+type badAccountFields struct {
+	Name     bool   `json:"name"`
+	IsCash   string `json:"is_cash"`
+	Currency bool   `json:"currency"`
+}
+
 type MoneyAccountBalance struct {
 	Balance float64 `json:"balance"`
 }

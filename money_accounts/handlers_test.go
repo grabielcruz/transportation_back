@@ -8,11 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
-	"github.com/grabielcruz/transportation_back/utility"
+	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,15 +21,15 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 	database.SetupDB(envPath)
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
-	r := gin.Default()
-	Routes(r)
+	router := httprouter.New()
+	Routes(router)
 
 	t.Run("Get empty slice of accounts initially", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts", nil)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 		var accounts []MoneyAccount
 
@@ -49,7 +48,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPost, "/money_accounts", &buf)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
 		var createdAccount MoneyAccount
@@ -70,7 +69,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts", nil)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 		accounts := []MoneyAccount{}
 
@@ -83,15 +82,15 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 
 	t.Run("Error when sending dummy json when creating account", func(t *testing.T) {
 		var buf bytes.Buffer
-		dummy := utility.GenerateDummyData()
-		err := json.NewEncoder(&buf).Encode(dummy)
+		badFields := generateBadAccountFields()
+		err := json.NewEncoder(&buf).Encode(badFields)
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodPost, "/money_accounts", &buf)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		var errResponse errors_handler.ErrorResponse
@@ -99,6 +98,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(body, &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Invalid data type", errResponse.Error)
 	})
 
 	t.Run("Create one money account and get it", func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts/"+wantedId.String(), nil)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 		var account MoneyAccount
 
@@ -127,7 +127,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts/"+wantedId, nil)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		var errResponse errors_handler.ErrorResponse
 
@@ -142,7 +142,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts/"+wantedId.String(), nil)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		var errResponse errors_handler.ErrorResponse
 
@@ -152,9 +152,9 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 	})
 
 	t.Run("It Should create and update one money account", func(t *testing.T) {
-		var buf bytes.Buffer
 		createFields := GenerateAccountFields()
 		wantedId := CreateMoneyAccount(createFields).ID
+		var buf bytes.Buffer
 		updateFields := GenerateAccountFields()
 		err := json.NewEncoder(&buf).Encode(updateFields)
 		assert.Nil(t, err)
@@ -162,7 +162,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodPatch, "/money_accounts/"+wantedId.String(), &buf)
 		assert.Nil(t, err)
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 
@@ -180,10 +180,14 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 	t.Run("Error when sending wrong id", func(t *testing.T) {
 		wantedId := "abcdefg"
 		w := httptest.NewRecorder()
-		req, err := http.NewRequest(http.MethodPatch, "/money_accounts/"+wantedId, nil)
+		var buf bytes.Buffer
+		updateFields := GenerateAccountFields()
+		err := json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+		req, err := http.NewRequest(http.MethodPatch, "/money_accounts/"+wantedId, &buf)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		var errResponse errors_handler.ErrorResponse
 
@@ -192,13 +196,17 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, "invalid UUID length: 7", errResponse.Error)
 	})
 
-	t.Run("Error when sending unexisting id", func(t *testing.T) {
+	t.Run("Error when sending unexisting id when patching", func(t *testing.T) {
 		wantedId := uuid.UUID{}
 		w := httptest.NewRecorder()
-		req, err := http.NewRequest(http.MethodPatch, "/money_accounts/"+wantedId.String(), nil)
+		var buf bytes.Buffer
+		updateFields := GenerateAccountFields()
+		err := json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+		req, err := http.NewRequest(http.MethodPatch, "/money_accounts/"+wantedId.String(), &buf)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 		var errResponse errors_handler.ErrorResponse
 
@@ -210,15 +218,15 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 	t.Run("Error when sending dummy json when updating account", func(t *testing.T) {
 		var buf bytes.Buffer
 		wantedId := uuid.UUID{}
-		dummy := utility.GenerateDummyData()
-		err := json.NewEncoder(&buf).Encode(dummy)
+		badFields := generateBadAccountFields()
+		err := json.NewEncoder(&buf).Encode(badFields)
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodPatch, "/money_accounts/"+wantedId.String(), &buf)
 		assert.Nil(t, err)
 
-		r.ServeHTTP(w, req)
+		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
 		var errResponse errors_handler.ErrorResponse
@@ -226,5 +234,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(body, &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Invalid data type", errResponse.Error)
+
 	})
 }

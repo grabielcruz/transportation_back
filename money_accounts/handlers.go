@@ -1,66 +1,79 @@
 package money_accounts
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/grabielcruz/transportation_back/utility"
+	"github.com/julienschmidt/httprouter"
 )
 
-func GetMoneyAccountsHandler(c *gin.Context) {
+func GetMoneyAccountsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	accounts := GetMoneyAccounts()
-	c.JSON(200, accounts)
+	utility.SendJson(w, http.StatusOK, accounts)
 }
 
-func CreateMoneyAccountHandler(c *gin.Context) {
+func CreateMoneyAccountHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	account := MoneyAccount{}
 	fields := MoneyAccountFields{}
-	if err := c.BindJSON(&fields); err != nil {
-		// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		// return
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		utility.SendReadError(w)
+		return
+	}
+	if err := json.Unmarshal(body, &fields); err != nil {
+		utility.SendUnmarshalError(w)
+		return
 	}
 	if err := checkAccountFields(fields); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.SendValidationError(w, err.Error())
 		return
 	}
 	account = CreateMoneyAccount(fields)
-	c.JSON(http.StatusOK, account)
+	utility.SendJson(w, http.StatusOK, account)
 }
 
-func GetOneMoneyAccountHandler(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
+func GetOneMoneyAccountHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	id, err := uuid.Parse(ps.ByName("id"))
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.SendInvalidUUIDError(w, err.Error())
 		return
 	}
 	account, err := GetOneMoneyAccount(id)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.SendServiceError(w, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, account)
+	utility.SendJson(w, http.StatusOK, account)
 }
 
-func UpdateMoneyAccountHandler(c *gin.Context) {
+func UpdateMoneyAccountHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	account := MoneyAccount{}
 	fields := MoneyAccountFields{}
-	id, err := uuid.Parse(c.Param("id"))
+	id, err := uuid.Parse(ps.ByName("id"))
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.SendInvalidUUIDError(w, err.Error())
 		return
 	}
-	if err := c.BindJSON(&fields); err != nil {
-		// c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		// return
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		utility.SendReadError(w)
+		return
 	}
-	// if err := checkAccountFields(fields); err != nil {
-	// 	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 	return
-	// }
+	if err := json.Unmarshal(body, &fields); err != nil {
+		utility.SendUnmarshalError(w)
+		return
+	}
+	if err := checkAccountFields(fields); err != nil {
+		utility.SendValidationError(w, err.Error())
+		return
+	}
 	account, err = UpdateMoneyAccount(id, fields)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utility.SendServiceError(w, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, account)
+	utility.SendJson(w, http.StatusOK, account)
 }

@@ -31,3 +31,12 @@ func GenerateAccountBalace() MoneyAccountBalance {
 	}
 	return balance
 }
+
+func generateBadAccountFields() badAccountFields {
+	badFields := badAccountFields{
+		Name:     utility.GetRandomBoolean(),
+		IsCash:   utility.GetRandomCurrency(),
+		Currency: utility.GetRandomBoolean(),
+	}
+	return badFields
+}

@@ -1,22 +1,24 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/grabielcruz/transportation_back/money_accounts"
+	"github.com/julienschmidt/httprouter"
 )
 
-func InitialHandler(c *gin.Context) {
-	c.String(http.StatusOK, "pong")
+func InitialHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "pong")
 }
 
-func SetupAndGetRoutes() *gin.Engine {
-	r := gin.Default()
+func SetupAndGetRoutes() *httprouter.Router {
+	router := httprouter.New()
 
-	r.GET("/ping", InitialHandler)
+	router.GET("/ping", InitialHandler)
 
-	money_accounts.Routes(r)
+	money_accounts.Routes(router)
 
-	return r
+	return router
 }

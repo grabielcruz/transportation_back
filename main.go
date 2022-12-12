@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+	"net/http"
 	"path/filepath"
 
 	"github.com/grabielcruz/transportation_back/database"
@@ -14,7 +16,7 @@ func main() {
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
 
-	r := routes.SetupAndGetRoutes()
+	router := routes.SetupAndGetRoutes()
 
-	r.Run()
+	log.Fatal(http.ListenAndServe(":8080", router))
 }
