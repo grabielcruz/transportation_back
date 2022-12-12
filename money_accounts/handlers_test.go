@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/grabielcruz/transportation_back/common"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/julienschmidt/httprouter"
@@ -215,7 +216,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, "sql: no rows in result set", errResponse.Error)
 	})
 
-	t.Run("Error when sending dummy json when updating account", func(t *testing.T) {
+	t.Run("Error when sending dummy json and updating account", func(t *testing.T) {
 		var buf bytes.Buffer
 		wantedId := uuid.UUID{}
 		badFields := generateBadAccountFields()
@@ -237,5 +238,46 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, "Invalid data type", errResponse.Error)
 	})
 
-	//todo error when sending patch without body
+	t.Run("It should create an account and delete it", func(t *testing.T) {
+		fields := GenerateAccountFields()
+		newId := CreateMoneyAccount(fields).ID
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodDelete, "/money_accounts/"+newId.String(), nil)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var deletedId common.ID
+		body := w.Body.Bytes()
+		err = json.Unmarshal(body, &deletedId)
+		assert.Nil(t, err)
+		assert.Equal(t, newId, deletedId.ID)
+
+		deletedAccount, err := GetOneMoneyAccount(newId)
+		assert.Equal(t, deletedAccount.ID, uuid.UUID{})
+		assert.NotNil(t, err)
+		assert.Equal(t, "sql: no rows in result set", err.Error())
+	})
+
+	deleteAllMoneyAccounts()
+
+	t.Run("it should send error when trying to delete unexisting account", func(t *testing.T) {
+		newId := uuid.UUID{}
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodDelete, "/money_accounts/"+newId.String(), nil)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		body := w.Body.Bytes()
+		err = json.Unmarshal(body, &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "sql: no rows in result set", errResponse.Error)
+	})
 }

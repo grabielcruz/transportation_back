@@ -2,6 +2,7 @@ package money_accounts
 
 import (
 	"github.com/google/uuid"
+	"github.com/grabielcruz/transportation_back/common"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
 )
@@ -73,17 +74,17 @@ func UpdatedMoneyAccountsBalance(account_id uuid.UUID, balance MoneyAccountBalan
 	return uma, nil
 }
 
-func DeleteOneMoneyAccount(account_id uuid.UUID) (MoneyAccount, error) {
-	var dma MoneyAccount
-	row := database.DB.QueryRow("DELETE FROM money_accounts WHERE id=$1 RETURNING *;", account_id)
-	err := row.Scan(&dma.ID, &dma.Name, &dma.Balance, &dma.IsCash, &dma.Currency, &dma.CreatedAt, &dma.UpdatedAt)
+func DeleteOneMoneyAccount(account_id uuid.UUID) (common.ID, error) {
+	id := common.ID{}
+	row := database.DB.QueryRow("DELETE FROM money_accounts WHERE id=$1 RETURNING id;", account_id)
+	err := row.Scan(&id.ID)
 	if err != nil {
 		if errors_handler.CheckEmptyRowError(err) {
-			return dma, err
+			return id, err
 		}
 		errors_handler.CheckError(err)
 	}
-	return dma, nil
+	return id, nil
 }
 
 func deleteAllMoneyAccounts() {

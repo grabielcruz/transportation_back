@@ -1,4 +1,4 @@
-package utility
+package common
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
+	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,7 +21,7 @@ const (
 )
 
 func jsonHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	dummy := DummyType{
+	dummy := utility.DummyType{
 		Hola: hola,
 		Que:  que,
 		Hace: hace,
@@ -29,7 +30,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func readBodyToJasonHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	var dummy DummyType
+	var dummy utility.DummyType
 	read, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		SendReadError(w)
@@ -57,7 +58,7 @@ func TestSendJson(t *testing.T) {
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		dummy := DummyType{}
+		dummy := utility.DummyType{}
 		err = json.Unmarshal(w.Body.Bytes(), &dummy)
 		assert.Nil(t, err)
 		assert.Equal(t, dummy.Hola, hola)
@@ -67,7 +68,7 @@ func TestSendJson(t *testing.T) {
 
 	t.Run("It should send a json dummy data a receive it in return", func(t *testing.T) {
 		var buf bytes.Buffer
-		dummy := GenerateDummyData()
+		dummy := utility.GenerateDummyData()
 		err := json.NewEncoder(&buf).Encode(dummy)
 		assert.Nil(t, err)
 
@@ -78,7 +79,7 @@ func TestSendJson(t *testing.T) {
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
-		createdDummy := DummyType{}
+		createdDummy := utility.DummyType{}
 		err = json.Unmarshal(w.Body.Bytes(), &createdDummy)
 		assert.Nil(t, err)
 		assert.Equal(t, dummy.Hola, createdDummy.Hola)

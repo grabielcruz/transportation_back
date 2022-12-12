@@ -9,4 +9,5 @@ func Routes(router *httprouter.Router) {
 	router.GET("/money_accounts/:id", GetOneMoneyAccountHandler)
 	router.POST("/money_accounts", CreateMoneyAccountHandler)
 	router.PATCH("/money_accounts/:id", UpdateMoneyAccountHandler)
+	router.DELETE("/money_accounts/:id", DeleteOneMoneyAccountHandler)
 }
