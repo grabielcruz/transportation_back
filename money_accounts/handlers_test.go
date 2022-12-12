@@ -235,6 +235,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, "Invalid data type", errResponse.Error)
-
 	})
+
+	//todo error when sending patch without body
 }
