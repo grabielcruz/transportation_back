@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/grabielcruz/transportation_back/money_accounts"
+	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/julienschmidt/httprouter"
 )
 

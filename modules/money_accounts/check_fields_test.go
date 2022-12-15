@@ -9,8 +9,8 @@ import (
 func TestCheckAccountFields(t *testing.T) {
 	fields := MoneyAccountFields{}
 	err := checkAccountFields(fields)
-	assert.NotNil(t, err)
+	assert.Equal(t, "Name is required", err.Error())
 	fields.Name = "John"
 	err = checkAccountFields(fields)
-	assert.NotNil(t, err)
+	assert.Equal(t, "Currency is required", err.Error())
 }

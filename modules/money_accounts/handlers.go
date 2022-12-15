@@ -32,7 +32,7 @@ func CreateMoneyAccountHandler(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 	account = CreateMoneyAccount(fields)
-	common.SendJson(w, http.StatusOK, account)
+	common.SendJson(w, http.StatusCreated, account)
 }
 
 func GetOneMoneyAccountHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -50,7 +50,6 @@ func GetOneMoneyAccountHandler(w http.ResponseWriter, r *http.Request, ps httpro
 }
 
 func UpdateMoneyAccountHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	account := MoneyAccount{}
 	fields := MoneyAccountFields{}
 	id, err := uuid.Parse(ps.ByName("id"))
 	if err != nil {
@@ -70,7 +69,7 @@ func UpdateMoneyAccountHandler(w http.ResponseWriter, r *http.Request, ps httpro
 		common.SendValidationError(w, err.Error())
 		return
 	}
-	account, err = UpdateMoneyAccount(id, fields)
+	account, err := UpdateMoneyAccount(id, fields)
 	if err != nil {
 		common.SendServiceError(w, err.Error())
 		return

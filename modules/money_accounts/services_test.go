@@ -6,22 +6,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
-	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestMoneyAccountServices contains a group of test related
 // to the crud of moneyAccount
 func TestMoneyAccountServices(t *testing.T) {
-	envPath := filepath.Clean("../.env_test")
-	sqlPath := filepath.Clean("../database/database.sql")
+	envPath := filepath.Clean("../../.env_test")
+	sqlPath := filepath.Clean("../../database/database.sql")
 	database.SetupDB(envPath)
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
 
 	t.Run("Get empty slice of accounts initially", func(t *testing.T) {
-		var moneyAccounts []MoneyAccount
-		moneyAccounts = GetMoneyAccounts()
+		moneyAccounts := GetMoneyAccounts()
 		assert.Len(t, moneyAccounts, 0)
 	})
 
@@ -29,7 +27,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		accountFields := GenerateAccountFields()
 		createdMoneyAccount := CreateMoneyAccount(accountFields)
 		assert.Equal(t, accountFields.Name, createdMoneyAccount.Name)
-		assert.Equal(t, accountFields.IsCash, createdMoneyAccount.IsCash)
+		assert.Equal(t, accountFields.Details, createdMoneyAccount.Details)
 		assert.Equal(t, accountFields.Currency, createdMoneyAccount.Currency)
 		assert.Equal(t, createdMoneyAccount.Balance, float64(0))
 	})
@@ -55,22 +53,26 @@ func TestMoneyAccountServices(t *testing.T) {
 	deleteAllMoneyAccounts()
 
 	t.Run("Error when getting unexisting account", func(t *testing.T) {
-		var zeroUUID uuid.UUID
+		zeroUUID := uuid.UUID{}
 		_, err := GetOneMoneyAccount(zeroUUID)
 		assert.NotNil(t, err)
+		assert.Equal(t, "sql: no rows in result set", err.Error())
 	})
 
 	t.Run("Create one money account and delete it", func(t *testing.T) {
 		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		DeleteOneMoneyAccount(createdMoneyAccount.ID)
-		_, err := GetOneMoneyAccount(createdMoneyAccount.ID)
+		deletedId, err := DeleteOneMoneyAccount(createdMoneyAccount.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, createdMoneyAccount.ID, deletedId.ID)
+		_, err = GetOneMoneyAccount(createdMoneyAccount.ID)
 		assert.NotNil(t, err)
+		assert.Equal(t, "sql: no rows in result set", err.Error())
 	})
 
 	deleteAllMoneyAccounts()
 
 	t.Run("Error when attempting to delete an unexisting account", func(t *testing.T) {
-		var zeroUUID uuid.UUID
+		zeroUUID := uuid.UUID{}
 		_, err := DeleteOneMoneyAccount(zeroUUID)
 		assert.NotNil(t, err)
 	})
@@ -80,18 +82,19 @@ func TestMoneyAccountServices(t *testing.T) {
 		updateFields := GenerateAccountFields()
 		createdAccount := CreateMoneyAccount(createFields)
 		updatedAccount, err := UpdateMoneyAccount(createdAccount.ID, updateFields)
-		errors_handler.CheckError(err)
+		assert.Nil(t, err)
 		assert.Equal(t, updatedAccount.ID, createdAccount.ID)
 		assert.Equal(t, updateFields.Name, updatedAccount.Name)
 		assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
-		assert.Equal(t, updateFields.IsCash, updatedAccount.IsCash)
+		assert.Equal(t, updateFields.Details, updatedAccount.Details)
+		assert.NotEqual(t, updatedAccount.CreatedAt.Nanosecond(), updatedAccount.UpdatedAt.Nanosecond())
 	})
 
 	deleteAllMoneyAccounts()
 
 	t.Run("It should generate error when trying to update an unexisting account", func(t *testing.T) {
-		var zeroUUID uuid.UUID
-		var zeroFields MoneyAccountFields
+		zeroUUID := uuid.UUID{}
+		zeroFields := MoneyAccountFields{}
 		_, err := UpdateMoneyAccount(zeroUUID, zeroFields)
 		assert.NotNil(t, err)
 	})
@@ -102,6 +105,16 @@ func TestMoneyAccountServices(t *testing.T) {
 		updatedAccount, _ := UpdatedMoneyAccountsBalance(createdMoneyAccount.ID, balance)
 		assert.Equal(t, updatedAccount.ID, createdMoneyAccount.ID)
 		assert.Equal(t, balance.Balance, updatedAccount.Balance)
+	})
+
+	deleteAllMoneyAccounts()
+
+	t.Run("Update balance time should be greater than creation time", func(t *testing.T) {
+		balance := GenerateAccountBalace()
+		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		updatedAccount, _ := UpdatedMoneyAccountsBalance(createdMoneyAccount.ID, balance)
+		assert.Equal(t, updatedAccount.ID, createdMoneyAccount.ID)
+		assert.NotEqual(t, updatedAccount.CreatedAt.Nanosecond(), updatedAccount.UpdatedAt.Nanosecond())
 	})
 
 	deleteAllMoneyAccounts()
