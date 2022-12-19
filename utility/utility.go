@@ -20,7 +20,12 @@ func GetRandomString(length int) string {
 
 func GetRandomBalance() float64 {
 	rand.Seed(change_seed())
-	return math.Round(rand.Float64()*10000) / 100
+	balance := rand.Float64()
+	return RoundToTwoDecimalPlaces(balance)
+}
+
+func RoundToTwoDecimalPlaces(f float64) float64 {
+	return math.Round(f*100) / 100
 }
 
 func GetRandomBoolean() bool {

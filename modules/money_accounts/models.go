@@ -8,7 +8,7 @@ import (
 type MoneyAccount struct {
 	ID uuid.UUID `json:"id"`
 	MoneyAccountFields
-	MoneyAccountBalance
+	Balance float64 `json:"balance"`
 	common.Timestamps
 }
 
@@ -24,6 +24,8 @@ type badAccountFields struct {
 	Currency bool `json:"currency"`
 }
 
-type MoneyAccountBalance struct {
-	Balance float64 `json:"balance"`
+type AccountNameAndBalance struct {
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Balance float64   `json:"balance"`
 }

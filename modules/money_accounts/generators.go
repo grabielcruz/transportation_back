@@ -13,11 +13,8 @@ func GenerateAccountFields() MoneyAccountFields {
 	return fields
 }
 
-func GenerateAccountBalace() MoneyAccountBalance {
-	balance := MoneyAccountBalance{
-		Balance: utility.GetRandomBalance(),
-	}
-	return balance
+func GenerateAccountBalace() float64 {
+	return utility.GetRandomBalance()
 }
 
 func generateBadAccountFields() badAccountFields {
