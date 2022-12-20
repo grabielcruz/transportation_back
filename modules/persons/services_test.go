@@ -92,4 +92,17 @@ func TestPersonService(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
+	t.Run("Create one person and get its name", func(t *testing.T) {
+		newPerson := CreatePerson(GeneratePersonFields())
+		name, err := GetPersonsName(newPerson.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newPerson.Name, name)
+	})
+
+	t.Run("Error when getting unexisting persons name", func(t *testing.T) {
+		_, err := GetPersonsName(uuid.UUID{})
+		assert.NotNil(t, err)
+		assert.Equal(t, "sql: no rows in result set", err.Error())
+	})
+
 }

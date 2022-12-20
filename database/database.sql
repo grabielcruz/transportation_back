@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS money_accounts;
 DROP TABLE IF EXISTS persons;
@@ -19,6 +20,8 @@ CREATE TABLE persons (
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+INSERT INTO persons (id, name, document) VALUES (uuid_nil(), '', '');
 
 CREATE TABLE transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),

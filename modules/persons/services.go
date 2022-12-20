@@ -75,6 +75,19 @@ func DeleteOnePerson(person_id uuid.UUID) (common.ID, error) {
 	return id, nil
 }
 
+func GetPersonsName(person_id uuid.UUID) (string, error) {
+	var name string = ""
+	row := database.DB.QueryRow("SELECT name FROM persons WHERE id = $1;", person_id)
+	err := row.Scan(&name)
+	if err != nil {
+		if errors_handler.CheckEmptyRowError(err) {
+			return name, err
+		}
+		errors_handler.CheckError(err)
+	}
+	return name, nil
+}
+
 func deleteAllPersons() {
 	database.DB.QueryRow("DELETE FROM persons;")
 }

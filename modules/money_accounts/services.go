@@ -1,14 +1,12 @@
 package money_accounts
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/common"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
-	"github.com/grabielcruz/transportation_back/utility"
 )
 
 func GetMoneyAccounts() []MoneyAccount {
@@ -64,35 +62,17 @@ func UpdateMoneyAccount(account_id uuid.UUID, fields MoneyAccountFields) (MoneyA
 	return uma, nil
 }
 
-func GetAccountsBalance(account_id uuid.UUID) (float64, error) {
-	var balance float64 = 0
-	row := database.DB.QueryRow("SELECT balance FROM money_accounts WHERE id = $1;", account_id)
-	err := row.Scan(&balance)
+func GetAccountsName(acount_id uuid.UUID) (string, error) {
+	name := ""
+	row := database.DB.QueryRow("SELECT name FROM money_accounts WHERE id = $1;", acount_id)
+	err := row.Scan(&name)
 	if err != nil {
 		if errors_handler.CheckEmptyRowError(err) {
-			return balance, err
+			return name, err
 		}
 		errors_handler.CheckError(err)
 	}
-	return balance, nil
-}
-
-func AddToBalance(account_id uuid.UUID, amount float64) (AccountNameAndBalance, error) {
-	anb := AccountNameAndBalance{}
-	oldBalance, err := GetAccountsBalance(account_id)
-	if err != nil {
-		return anb, err
-	}
-	newBalance := oldBalance + utility.RoundToTwoDecimalPlaces(amount)
-	if newBalance < 0 {
-		err := fmt.Errorf("New balance can't be a negative number")
-		return anb, err
-	}
-	anb, err = updateMoneyAccountBalance(account_id, newBalance)
-	if err != nil {
-		return anb, err
-	}
-	return anb, nil
+	return name, nil
 }
 
 func DeleteOneMoneyAccount(account_id uuid.UUID) (common.ID, error) {
@@ -106,20 +86,6 @@ func DeleteOneMoneyAccount(account_id uuid.UUID) (common.ID, error) {
 		errors_handler.CheckError(err)
 	}
 	return id, nil
-}
-
-func updateMoneyAccountBalance(account_id uuid.UUID, balance float64) (AccountNameAndBalance, error) {
-	var uma AccountNameAndBalance
-	row := database.DB.QueryRow("UPDATE money_accounts SET balance = $1, updated_at = $2 WHERE id = $3 RETURNING id, name, balance;",
-		balance, time.Now(), account_id)
-	err := row.Scan(&uma.ID, &uma.Name, &uma.Balance)
-	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return uma, err
-		}
-		errors_handler.CheckError(err)
-	}
-	return uma, nil
 }
 
 func deleteAllMoneyAccounts() {

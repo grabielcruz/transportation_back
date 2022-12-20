@@ -99,88 +99,18 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
-	t.Run("It should create an account and update its balance", func(t *testing.T) {
-		balance := GenerateAccountBalace()
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		updatedAccount, _ := updateMoneyAccountBalance(createdMoneyAccount.ID, balance)
-		assert.Equal(t, updatedAccount.ID, createdMoneyAccount.ID)
-		assert.Equal(t, balance, updatedAccount.Balance)
-	})
-
-	deleteAllMoneyAccounts()
-
-	t.Run("Update balance time should be greater than creation time", func(t *testing.T) {
-		balance := GenerateAccountBalace()
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		updatedAccount, _ := updateMoneyAccountBalance(createdMoneyAccount.ID, balance)
-		assert.Equal(t, updatedAccount.ID, createdMoneyAccount.ID)
-	})
-
-	deleteAllMoneyAccounts()
-
-	t.Run("It should get error when updating balance's account with wrong id", func(t *testing.T) {
-		var zeroUUID uuid.UUID
-		balance := GenerateAccountBalace()
-		_, err := updateMoneyAccountBalance(zeroUUID, balance)
-		assert.NotNil(t, err)
-	})
-
-	t.Run("It should modify account's balance and get it modified", func(t *testing.T) {
-		balance := GenerateAccountBalace()
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		_, err := updateMoneyAccountBalance(createdMoneyAccount.ID, balance)
+	t.Run("Create one money account and get its name", func(t *testing.T) {
+		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		name, err := GetAccountsName(newMoneyAccount.ID)
 		assert.Nil(t, err)
-		updatedBalance, err := GetAccountsBalance((createdMoneyAccount.ID))
-		assert.Nil(t, err)
-		assert.Equal(t, balance, updatedBalance)
+		assert.Equal(t, newMoneyAccount.Name, name)
 	})
 
-	deleteAllMoneyAccounts()
-
-	t.Run("Get error when getting unexisting account's balance", func(t *testing.T) {
-		zeroUUID := uuid.UUID{}
-		balance, err := GetAccountsBalance(zeroUUID)
+	t.Run("Error when getting unexisting money accounts name", func(t *testing.T) {
+		name, err := GetAccountsName(uuid.UUID{})
+		assert.Equal(t, "", name)
 		assert.NotNil(t, err)
 		assert.Equal(t, "sql: no rows in result set", err.Error())
-		assert.Zero(t, balance)
 	})
 
-	t.Run("Create an account and add an amount to its balance", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		newAmount := GenerateAccountBalace()
-		updated, err := AddToBalance(createdMoneyAccount.ID, newAmount)
-		assert.Nil(t, err)
-		assert.Equal(t, newAmount, updated.Balance)
-	})
-
-	deleteAllMoneyAccounts()
-
-	t.Run("Error when adding an amount to an unexisting account", func(t *testing.T) {
-		newAmount := GenerateAccountBalace()
-		nameAndBalance, err := AddToBalance(uuid.UUID{}, newAmount)
-		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
-		assert.Equal(t, float64(0), nameAndBalance.Balance)
-	})
-
-	t.Run("Error when generating a negative balance", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		var newAmount float64 = -100
-		nameAndBalance, err := AddToBalance(createdMoneyAccount.ID, newAmount)
-		assert.NotNil(t, err)
-		assert.Equal(t, float64(0), nameAndBalance.Balance)
-		assert.Equal(t, "New balance can't be a negative number", err.Error())
-	})
-
-	deleteAllMoneyAccounts()
-
-	t.Run("Add and substrat to account getting it back to zero", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		newAmount := GenerateAccountBalace()
-		_, err := AddToBalance(createdMoneyAccount.ID, newAmount)
-		assert.Nil(t, err)
-		nameAndBalance, err := AddToBalance(createdMoneyAccount.ID, float64(-1)*newAmount)
-		assert.Nil(t, err)
-		assert.Equal(t, float64(0), nameAndBalance.Balance)
-	})
 }
