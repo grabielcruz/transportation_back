@@ -16,9 +16,10 @@ func TestPersonService(t *testing.T) {
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
 
-	t.Run("Get empty slice of persons initially", func(t *testing.T) {
+	// zero person should be couned
+	t.Run("Get one person initially", func(t *testing.T) {
 		persons := GetPersons()
-		assert.Len(t, persons, 0)
+		assert.Len(t, persons, 1)
 	})
 
 	t.Run("Create one person", func(t *testing.T) {
@@ -28,7 +29,7 @@ func TestPersonService(t *testing.T) {
 		assert.Equal(t, personFields.Document, createdPerson.Document)
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("Create two person and get an slice of persons", func(t *testing.T) {
 		CreatePerson(GeneratePersonFields())
@@ -37,7 +38,7 @@ func TestPersonService(t *testing.T) {
 		assert.Len(t, persons, 2)
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("Create one person and get it", func(t *testing.T) {
 		newPerson := CreatePerson(GeneratePersonFields())
@@ -46,7 +47,7 @@ func TestPersonService(t *testing.T) {
 		assert.Equal(t, newPerson.ID, obtainedPerson.ID)
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("Error when getting unexisting person", func(t *testing.T) {
 		zeroUUID := uuid.UUID{}
@@ -67,7 +68,7 @@ func TestPersonService(t *testing.T) {
 		assert.NotEqual(t, newPerson.UpdatedAt, updatedPerson.UpdatedAt)
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("It should genereate error when trying to update unexisting person", func(t *testing.T) {
 		zeroUUID := uuid.UUID{}

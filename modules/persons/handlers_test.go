@@ -26,6 +26,7 @@ func TestPersonsHandlers(t *testing.T) {
 	router := httprouter.New()
 	Routes(router)
 
+	// zero person should be counted
 	t.Run("Get empty slice of persons initially", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodGet, "/persons", nil)
@@ -37,7 +38,7 @@ func TestPersonsHandlers(t *testing.T) {
 		persons := []Person{}
 		err = json.Unmarshal(w.Body.Bytes(), &persons)
 		assert.Nil(t, err)
-		assert.Len(t, persons, 0)
+		assert.Len(t, persons, 1)
 	})
 
 	t.Run("Create one person", func(t *testing.T) {
@@ -60,7 +61,7 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Equal(t, fields.Document, newPerson.Document)
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("Create three persons and get an slice of three persons", func(t *testing.T) {
 		CreatePerson(GeneratePersonFields())
@@ -79,7 +80,7 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Len(t, persons, 3)
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("Error when sending invalid json when creating person", func(t *testing.T) {
 		buf := bytes.Buffer{}
@@ -290,7 +291,7 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Equal(t, "sql: no rows in result set", err.Error())
 	})
 
-	deleteAllPersons()
+	DeleteAllPersons()
 
 	t.Run("It should send error when sending bad id", func(t *testing.T) {
 		newId := utility.GetRandomString(10)

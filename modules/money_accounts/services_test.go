@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
+	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +33,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Equal(t, createdMoneyAccount.Balance, float64(0))
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Create two money accounts and get an slice of accounts", func(t *testing.T) {
 		CreateMoneyAccount(GenerateAccountFields())
@@ -41,7 +42,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Len(t, moneyAccounts, 2)
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Create one money account and get it", func(t *testing.T) {
 		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
@@ -50,7 +51,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Equal(t, createdMoneyAccount.ID, obtainedMoneyAccount.ID)
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Error when getting unexisting account", func(t *testing.T) {
 		zeroUUID := uuid.UUID{}
@@ -69,7 +70,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Equal(t, "sql: no rows in result set", err.Error())
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Error when attempting to delete an unexisting account", func(t *testing.T) {
 		zeroUUID := uuid.UUID{}
@@ -90,7 +91,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.NotEqual(t, updatedAccount.CreatedAt.Nanosecond(), updatedAccount.UpdatedAt.Nanosecond())
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("It should generate error when trying to update an unexisting account", func(t *testing.T) {
 		zeroUUID := uuid.UUID{}
@@ -101,14 +102,54 @@ func TestMoneyAccountServices(t *testing.T) {
 
 	t.Run("Create one money account and get its name", func(t *testing.T) {
 		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
-		name, err := GetAccountsName(newMoneyAccount.ID)
+		name, err := getAccountsName(newMoneyAccount.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, newMoneyAccount.Name, name)
 	})
 
 	t.Run("Error when getting unexisting money accounts name", func(t *testing.T) {
-		name, err := GetAccountsName(uuid.UUID{})
+		name, err := getAccountsName(uuid.UUID{})
 		assert.Equal(t, "", name)
+		assert.NotNil(t, err)
+		assert.Equal(t, "sql: no rows in result set", err.Error())
+	})
+
+	t.Run("Set accounts balance", func(t *testing.T) {
+		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		newBalance := utility.GetRandomBalance()
+		updatedId, err := setAccountsBalance(newMoneyAccount.ID, newBalance)
+		assert.Nil(t, err)
+		assert.Equal(t, newMoneyAccount.ID, updatedId.ID)
+		updatedAccount, err := GetOneMoneyAccount(newMoneyAccount.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newBalance, updatedAccount.Balance)
+	})
+
+	DeleteAllMoneyAccounts()
+
+	t.Run("Error when updating unexisting account's balance", func(t *testing.T) {
+		zeroID := uuid.UUID{}
+		newBalance := utility.GetRandomBalance()
+		_, err := setAccountsBalance(zeroID, newBalance)
+		assert.NotNil(t, err)
+		assert.Equal(t, "sql: no rows in result set", err.Error())
+	})
+
+	t.Run("Reset accounts balance", func(t *testing.T) {
+		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		updatedId, err := ResetAccountsBalance(newMoneyAccount.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newMoneyAccount.ID, updatedId.ID)
+		updatedAccount, err := GetOneMoneyAccount(newMoneyAccount.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, float64(0), updatedAccount.Balance)
+	})
+
+	DeleteAllMoneyAccounts()
+
+	t.Run("Error when reseting unexisting account's balance", func(t *testing.T) {
+		zeroID := uuid.UUID{}
+		_, err := ResetAccountsBalance(zeroID)
 		assert.NotNil(t, err)
 		assert.Equal(t, "sql: no rows in result set", err.Error())
 	})

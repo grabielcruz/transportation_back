@@ -10,9 +10,8 @@ import (
 type Transaction struct {
 	ID uuid.UUID `json:"id"`
 	TransactionFields
-	AccountName string  `json:"account_name"`
-	PersonName  string  `json:"person_name"`
-	Balance     float64 `json:"balance"`
+	PersonName string  `json:"person_name"`
+	Balance    float64 `json:"balance"`
 	common.Timestamps
 }
 

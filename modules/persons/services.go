@@ -88,6 +88,6 @@ func GetPersonsName(person_id uuid.UUID) (string, error) {
 	return name, nil
 }
 
-func deleteAllPersons() {
+func DeleteAllPersons() {
 	database.DB.QueryRow("DELETE FROM persons;")
 }

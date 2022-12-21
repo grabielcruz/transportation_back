@@ -61,7 +61,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, fields.Currency, createdAccount.Currency)
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Create three money accounts and get an slice of accounts", func(t *testing.T) {
 		CreateMoneyAccount(GenerateAccountFields())
@@ -80,7 +80,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Len(t, accounts, 3)
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Error when sending invalid json when creating account", func(t *testing.T) {
 		buf := bytes.Buffer{}
@@ -142,7 +142,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, fields.Currency, account.Currency)
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Get error when sending bad id", func(t *testing.T) {
 		badId := utility.GetRandomString(10)
@@ -196,7 +196,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("Error when sending bad id", func(t *testing.T) {
 		badId := utility.GetRandomString(10)
@@ -303,7 +303,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, "sql: no rows in result set", err.Error())
 	})
 
-	deleteAllMoneyAccounts()
+	DeleteAllMoneyAccounts()
 
 	t.Run("it should send error when sending bad id", func(t *testing.T) {
 		newId := utility.GetRandomString(10)
