@@ -12,7 +12,7 @@ import (
 
 func GetTransactions(account_id uuid.UUID, limit int, offset int) TransationResponse {
 	transactionResponse := TransationResponse{}
-	rows, err := database.DB.Query("SELECT * FROM transactions WHERE account_id = $1 LIMIT $2 OFFSET $3;", account_id, limit, offset)
+	rows, err := database.DB.Query("SELECT * FROM transactions WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;", account_id, limit, offset)
 	errors_handler.CheckError(err)
 	defer rows.Close()
 

@@ -114,12 +114,12 @@ func TestTransactionServices(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Execute 1000 transactions and get accounts balance right", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(1000)
+	t.Run("Execute 100 transactions and get accounts balance right", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(100)
 		sum := utility.GetSumOfAmounts(amounts)
 		for i, v := range amounts {
 			personId := person.ID
-			if i%20 == 0 {
+			if i%5 == 0 {
 				personId = uuid.UUID{}
 			}
 			transactionFields := GenerateTransactionFields(account.ID, personId)
@@ -130,6 +130,46 @@ func TestTransactionServices(t *testing.T) {
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, sum, updatedAccount.Balance)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Execute 10 transaction and the first transaction in the slice should be the last on execution", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(10)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%2 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+		transactions := GetTransactions(account.ID, Limit, Offset)
+		assert.Equal(t, transactions.Transactions[0].Balance, updatedAccount.Balance)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Execute 51 transaction and get in last page the initial transaction", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(51)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%3 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+		transactions := GetTransactions(account.ID, Limit, 50)
+		assert.Equal(t, transactions.Transactions[0].Balance, transactions.Transactions[0].Amount)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
