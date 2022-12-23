@@ -88,7 +88,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Equal(t, updateFields.Name, updatedAccount.Name)
 		assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
 		assert.Equal(t, updateFields.Details, updatedAccount.Details)
-		assert.NotEqual(t, updatedAccount.CreatedAt.Nanosecond(), updatedAccount.UpdatedAt.Nanosecond())
+		assert.Greater(t, updatedAccount.UpdatedAt.Nanosecond(), updatedAccount.CreatedAt.Nanosecond())
 	})
 
 	DeleteAllMoneyAccounts()

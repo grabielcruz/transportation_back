@@ -17,3 +17,25 @@ func GenerateTransactionFields(account_id uuid.UUID, person_id uuid.UUID) Transa
 	}
 	return fields
 }
+
+func generateBadTransactionFields(account_id uuid.UUID, person_id uuid.UUID) badTransactionFields {
+	badFields := badTransactionFields{
+		AccountId:   account_id,
+		PersonId:    person_id,
+		Date:        utility.GetRandomString(10),
+		Amount:      utility.GetRandomString(10),
+		Description: utility.GetRandomBoolean(),
+	}
+	return badFields
+}
+
+func generateBadTransactionFieldsWithBadIds(account_id uuid.UUID, person_id uuid.UUID) badTransactionFieldsWithBadIds {
+	badFields := badTransactionFieldsWithBadIds{
+		AccountId:   "absce",
+		PersonId:    "efghi",
+		Date:        utility.GetRandomString(10),
+		Amount:      utility.GetRandomString(10),
+		Description: utility.GetRandomBoolean(),
+	}
+	return badFields
+}

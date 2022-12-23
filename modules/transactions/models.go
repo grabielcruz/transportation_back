@@ -27,3 +27,19 @@ type TransationResponse struct {
 	Transactions []Transaction `json:"transactions"`
 	Pagination   common.Pagination
 }
+
+type badTransactionFields struct {
+	AccountId   uuid.UUID `json:"account_id"`
+	PersonId    uuid.UUID `json:"person_id"`
+	Date        string    `json:"date"`
+	Amount      string    `json:"amount"`
+	Description bool      `json:"description"`
+}
+
+type badTransactionFieldsWithBadIds struct {
+	AccountId   string `json:"account_id"`
+	PersonId    string `json:"person_id"`
+	Date        string `json:"date"`
+	Amount      string `json:"amount"`
+	Description bool   `json:"description"`
+}

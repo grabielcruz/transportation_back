@@ -48,3 +48,7 @@ func SendInvalidUUIDError(w http.ResponseWriter, msg string) {
 func SendServiceError(w http.ResponseWriter, msg string) {
 	sendJsonError(w, http.StatusBadRequest, msg)
 }
+
+func SendInvalidQueryStringError(w http.ResponseWriter, msg string) {
+	sendJsonError(w, http.StatusBadRequest, msg)
+}

@@ -65,7 +65,7 @@ func TestPersonService(t *testing.T) {
 		assert.Equal(t, newPerson.ID, updatedPerson.ID)
 		assert.Equal(t, updateFields.Name, updatedPerson.Name)
 		assert.Equal(t, updateFields.Document, updatedPerson.Document)
-		assert.NotEqual(t, newPerson.UpdatedAt, updatedPerson.UpdatedAt)
+		assert.Greater(t, updatedPerson.UpdatedAt, newPerson.CreatedAt)
 	})
 
 	DeleteAllPersons()

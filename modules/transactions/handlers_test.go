@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,8 +9,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
+	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
+	"github.com/grabielcruz/transportation_back/modules/persons"
+	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,16 +27,16 @@ func TestTransactionsHandlers(t *testing.T) {
 	defer database.CloseConnection()
 	router := httprouter.New()
 	Routes(router)
-	w := httptest.NewRecorder()
 
 	account := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
-	// person := persons.CreatePerson(persons.GeneratePersonFields())
+	person := persons.CreatePerson(persons.GeneratePersonFields())
 
 	t.Run("Get a transaction response with zero transactions initially", func(t *testing.T) {
 		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		assert.Nil(t, err)
 
+		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 
@@ -40,4 +45,568 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Len(t, transactionsResponse.Transactions, 0)
 	})
+
+	t.Run("Create a transaction without a person", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(account.ID, uuid.UUID{})
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		newTransaction := Transaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &newTransaction)
+		assert.Nil(t, err)
+		assert.Equal(t, fields.AccountId, newTransaction.AccountId)
+		assert.Equal(t, fields.Amount, newTransaction.Amount)
+		assert.Equal(t, fields.Description, newTransaction.Description)
+
+		transations, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Len(t, transations.Transactions, 1)
+		assert.Equal(t, 1, transations.Pagination.Count)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Create one transaction with a person", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(account.ID, person.ID)
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		newTransaction := Transaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &newTransaction)
+		assert.Nil(t, err)
+		assert.Equal(t, fields.AccountId, newTransaction.AccountId)
+		assert.Equal(t, fields.Amount, newTransaction.Amount)
+		assert.Equal(t, fields.Description, newTransaction.Description)
+
+		transations, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Len(t, transations.Transactions, 1)
+		assert.Equal(t, 1, transations.Pagination.Count)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when creating a transaction with an unexisting account", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(uuid.UUID{}, uuid.UUID{})
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Could not get balance from account", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when create a transaction with invalid json fields", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := generateBadTransactionFields(account.ID, person.ID)
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Invalid data type", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when create a transaction with bad ids", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := generateBadTransactionFieldsWithBadIds(account.ID, person.ID)
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Invalid data type", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when generating negative balance", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(account.ID, person.ID)
+		fields.Amount *= -1
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Transaction should not generate a negative balance", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when sending empty description", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(account.ID, person.ID)
+		fields.Description = ""
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Transaction should have a description", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when sending zero balance", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(account.ID, person.ID)
+		fields.Amount = float64(0)
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transactions", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		var errResponse errors_handler.ErrorResponse
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse.Error)
+		assert.Equal(t, "Amount should be greater than zero", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Create one transaction and get it", func(t *testing.T) {
+		fields := GenerateTransactionFields(account.ID, person.ID)
+		newTransaction, err := CreateTransaction(fields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		var transactionsResponse TransationResponse
+		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
+		assert.Nil(t, err)
+		assert.Len(t, transactionsResponse.Transactions, 1)
+		assert.Equal(t, Offset, transactionsResponse.Pagination.Offset)
+		assert.Equal(t, Limit, transactionsResponse.Pagination.Limit)
+		assert.Equal(t, 1, transactionsResponse.Pagination.Count)
+		assert.Equal(t, newTransaction.ID, transactionsResponse.Transactions[0].ID)
+		assert.Equal(t, newTransaction.Balance, transactionsResponse.Transactions[0].Balance)
+		assert.Equal(t, newTransaction.Amount, transactionsResponse.Transactions[0].Amount)
+		assert.Equal(t, newTransaction.AccountId, transactionsResponse.Transactions[0].AccountId)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Generate 21 transactions and get them paginated", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(21)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%5 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		transactionsResponse := TransationResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
+		assert.Nil(t, err)
+		// the first transaction should be the last executed one
+		assert.Equal(t, updatedAccount.Balance, transactionsResponse.Transactions[0].Balance)
+		assert.Len(t, transactionsResponse.Transactions, Limit)
+		assert.Equal(t, transactionsResponse.Pagination.Count, 21)
+		assert.Equal(t, transactionsResponse.Pagination.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Pagination.Offset, Offset)
+
+		// offset = 10
+		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, 10)
+		req, err = http.NewRequest(http.MethodGet, url, nil)
+		assert.Nil(t, err)
+
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		transactionsResponse = TransationResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
+		assert.Nil(t, err)
+
+		assert.Len(t, transactionsResponse.Transactions, Limit)
+		assert.Equal(t, transactionsResponse.Pagination.Count, 21)
+		assert.Equal(t, transactionsResponse.Pagination.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Pagination.Offset, 10)
+
+		// offset = 20
+		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, 20)
+		req, err = http.NewRequest(http.MethodGet, url, nil)
+		assert.Nil(t, err)
+
+		w = httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		transactionsResponse = TransationResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
+		assert.Nil(t, err)
+
+		assert.Len(t, transactionsResponse.Transactions, 1)
+		assert.Equal(t, transactionsResponse.Pagination.Count, 21)
+		assert.Equal(t, transactionsResponse.Pagination.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Pagination.Offset, 20)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Create 7 transactions, update the last one and check sequence", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(7)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%3 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		updatedAccountFirst, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+
+		transactionResponseFirst, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		err = json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", transactionResponseFirst.Transactions[0].ID)
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		updatedTransaction := Transaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &updatedTransaction)
+		assert.Nil(t, err)
+
+		updatedAccountSecond, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+
+		transactionResponseSecond, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		assert.Equal(t, updatedAccountSecond.Balance, transactionResponseSecond.Transactions[0].Balance)
+		generatedBalanceFromPreviousTransactionSecond := utility.RoundToTwoDecimalPlaces(transactionResponseSecond.Transactions[1].Balance + transactionResponseSecond.Transactions[0].Amount)
+		assert.Equal(t, updatedAccountSecond.Balance, generatedBalanceFromPreviousTransactionSecond)
+
+		// previous balance and new balance should be different
+		assert.NotEqual(t, updatedAccountFirst.Balance, updatedAccountSecond.Balance)
+
+		// should have still 7 transactions
+		assert.Len(t, transactionResponseSecond.Transactions, 7)
+
+		// update time should be greater than creation time
+		assert.Greater(t, updatedTransaction.UpdatedAt, updatedTransaction.CreatedAt)
+	})
+
+	t.Run("Error when trying to update a transaction that is not the last one", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(7)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%3 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		err = json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", transactionResponse.Transactions[1].ID)
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "The transaction requested is not the last transaction", errResponse.Error)
+
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when trying to update unexisting transaction with empty database", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		err := json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", uuid.UUID{})
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "No transaction found in database", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when sending bad id", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		err := json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", "abcde")
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "invalid UUID length: 5", errResponse.Error)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when trying to update a transaction that generates a negative balance", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(1)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%3 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		updateFields.Amount = -1 * (updatedAccount.Balance + 1)
+		err = json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", transactionResponse.Transactions[0].ID)
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "Transaction should not generate a negative balance", errResponse.Error)
+
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when updating transaction with empty description", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(1)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%3 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		updateFields.Description = ""
+		err = json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", transactionResponse.Transactions[0].ID)
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "Transaction should have a description", errResponse.Error)
+
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when updating transaction with zero amount", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(1)
+		for i, v := range amounts {
+			personId := person.ID
+			if i%3 == 0 {
+				personId = uuid.UUID{}
+			}
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		buf := bytes.Buffer{}
+		updateFields := GenerateTransactionFields(account.ID, person.ID)
+		updateFields.Amount = float64(0)
+		err = json.NewEncoder(&buf).Encode(updateFields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transactions/%v", transactionResponse.Transactions[0].ID)
+		req, err := http.NewRequest(http.MethodPatch, url, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "Amount should be greater than zero", errResponse.Error)
+
+	})
+
+	// at the end of all transactions services tests
+	money_accounts.DeleteAllMoneyAccounts()
+	persons.DeleteAllPersons()
 }

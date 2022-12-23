@@ -190,6 +190,7 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, updateFields.Name, updatedPerson.Name)
 		assert.Equal(t, updateFields.Document, updatedPerson.Document)
+		assert.Greater(t, updatedPerson.UpdatedAt, updatedPerson.CreatedAt)
 	})
 
 	t.Run("Error when sending bad id", func(t *testing.T) {
