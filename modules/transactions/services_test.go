@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
+	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
@@ -63,7 +64,7 @@ func TestTransactionServices(t *testing.T) {
 		transactionFields := GenerateTransactionFields(zeroId, zeroId)
 		_, err := CreateTransaction(transactionFields)
 		assert.NotNil(t, err)
-		assert.Equal(t, "Could not get balance from account", err.Error())
+		assert.Equal(t, errors_handler.TR001, err.Error())
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -74,7 +75,7 @@ func TestTransactionServices(t *testing.T) {
 		transactionFields.Amount *= -1
 		_, err := CreateTransaction(transactionFields)
 		assert.NotNil(t, err)
-		assert.Equal(t, "Transaction should not generate a negative balance", err.Error())
+		assert.Equal(t, errors_handler.TR002, err.Error())
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(transactionFields.AccountId)
 		assert.Nil(t, err)
 		// accounts balance should remain unmodified, which means it is equal to zero
@@ -236,7 +237,7 @@ func TestTransactionServices(t *testing.T) {
 
 		_, err = UpdateLastTransaction(transactionResponse.Transactions[1].ID, updateFields)
 		assert.NotNil(t, err)
-		assert.Equal(t, "The transaction requested is not the last transaction", err.Error())
+		assert.Equal(t, errors_handler.TR003, err.Error())
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -247,7 +248,7 @@ func TestTransactionServices(t *testing.T) {
 
 		_, err := UpdateLastTransaction(uuid.UUID{}, updateFields)
 		assert.NotNil(t, err)
-		assert.Equal(t, "No transaction found in database", err.Error())
+		assert.Equal(t, errors_handler.TR004, err.Error())
 	})
 
 	t.Run("Error when updating transaction that generates negative balance", func(t *testing.T) {
@@ -271,7 +272,7 @@ func TestTransactionServices(t *testing.T) {
 
 		_, err = UpdateLastTransaction(transactionResponse.Transactions[0].ID, updateFields)
 		assert.NotNil(t, err)
-		assert.Equal(t, "Transaction should not generate a negative balance", err.Error())
+		assert.Equal(t, errors_handler.TR002, err.Error())
 
 	})
 

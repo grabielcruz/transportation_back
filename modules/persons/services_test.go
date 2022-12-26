@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
+	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,7 +54,7 @@ func TestPersonService(t *testing.T) {
 		zeroUUID := uuid.UUID{}
 		_, err := GetOnePerson(zeroUUID)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("It should create and update one person", func(t *testing.T) {
@@ -84,7 +85,7 @@ func TestPersonService(t *testing.T) {
 		assert.Equal(t, newPerson.ID, deletedId.ID)
 		_, err = GetOnePerson(deletedId.ID)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Error when attempting to delete an unexisting person", func(t *testing.T) {
@@ -103,7 +104,7 @@ func TestPersonService(t *testing.T) {
 	t.Run("Error when getting unexisting persons name", func(t *testing.T) {
 		_, err := GetPersonsName(uuid.UUID{})
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 }

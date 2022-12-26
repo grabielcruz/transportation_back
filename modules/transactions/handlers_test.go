@@ -119,7 +119,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "Could not get balance from account", errResponse.Error)
+		assert.Equal(t, errors_handler.TR001, errResponse.Error)
+		assert.Equal(t, "TR001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -142,7 +143,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "Invalid data type", errResponse.Error)
+		assert.Equal(t, errors_handler.UM001, errResponse.Error)
+		assert.Equal(t, "UM001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -165,7 +167,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "Invalid data type", errResponse.Error)
+		assert.Equal(t, errors_handler.UM001, errResponse.Error)
+		assert.Equal(t, "UM001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -189,7 +192,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "Transaction should not generate a negative balance", errResponse.Error)
+		assert.Equal(t, errors_handler.TR002, errResponse.Error)
+		assert.Equal(t, "TR002", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -214,6 +218,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, "Transaction should have a description", errResponse.Error)
+		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -238,6 +243,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, "Amount should be greater than zero", errResponse.Error)
+		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -433,7 +439,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		errResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, "The transaction requested is not the last transaction", errResponse.Error)
+		assert.Equal(t, errors_handler.TR003, errResponse.Error)
+		assert.Equal(t, "TR003", errResponse.Code)
 
 	})
 
@@ -457,7 +464,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		errResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, "No transaction found in database", errResponse.Error)
+		assert.Equal(t, errors_handler.TR004, errResponse.Error)
+		assert.Equal(t, "TR004", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -481,6 +489,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.Equal(t, "invalid UUID length: 5", errResponse.Error)
+		assert.Equal(t, "UI001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -522,8 +531,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		errResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, "Transaction should not generate a negative balance", errResponse.Error)
-
+		assert.Equal(t, errors_handler.TR002, errResponse.Error)
+		assert.Equal(t, "TR002", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -563,7 +572,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.Equal(t, "Transaction should have a description", errResponse.Error)
-
+		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -603,7 +612,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.Equal(t, "Amount should be greater than zero", errResponse.Error)
-
+		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
 	// at the end of all transactions services tests

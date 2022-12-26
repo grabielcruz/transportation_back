@@ -112,7 +112,7 @@ func TestSendJson(t *testing.T) {
 		errorResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errorResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, "Invalid data type", errorResponse.Error)
+		assert.Equal(t, errors_handler.UM001, errorResponse.Error)
 
 	})
 }

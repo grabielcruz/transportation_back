@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
+	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/stretchr/testify/assert"
 )
@@ -57,7 +58,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		zeroUUID := uuid.UUID{}
 		_, err := GetOneMoneyAccount(zeroUUID)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Create one money account and delete it", func(t *testing.T) {
@@ -67,7 +68,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Equal(t, createdMoneyAccount.ID, deletedId.ID)
 		_, err = GetOneMoneyAccount(createdMoneyAccount.ID)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	DeleteAllMoneyAccounts()
@@ -111,7 +112,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		name, err := getAccountsName(uuid.UUID{})
 		assert.Equal(t, "", name)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Set accounts balance", func(t *testing.T) {
@@ -132,7 +133,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		newBalance := utility.GetRandomBalance()
 		_, err := setAccountsBalance(zeroID, newBalance)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Reset accounts balance", func(t *testing.T) {
@@ -151,7 +152,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		zeroID := uuid.UUID{}
 		_, err := ResetAccountsBalance(zeroID)
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 }

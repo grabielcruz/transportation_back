@@ -18,9 +18,9 @@ func SendJson(w http.ResponseWriter, httpCode int, data any) {
 	return
 }
 
-func sendJsonError(w http.ResponseWriter, httpCode int, msg string) {
+func sendJsonError(w http.ResponseWriter, httpCode int, errorCode string, msg string) {
 	w.WriteHeader(httpCode)
-	errorResponse := errors_handler.ErrorResponse{Error: msg}
+	errorResponse := errors_handler.ErrorResponse{Code: errorCode, Error: msg}
 	json_data, err := json.Marshal(errorResponse)
 	if err != nil {
 		// should never happend
@@ -30,25 +30,27 @@ func sendJsonError(w http.ResponseWriter, httpCode int, msg string) {
 	return
 }
 func SendReadError(w http.ResponseWriter) {
-	sendJsonError(w, http.StatusBadRequest, "Unable to read body of the request")
+	sendJsonError(w, http.StatusBadRequest, "RE001", errors_handler.RE001)
 }
 
 func SendUnmarshalError(w http.ResponseWriter) {
-	sendJsonError(w, http.StatusBadRequest, "Invalid data type")
+	sendJsonError(w, http.StatusBadRequest, "UM001", errors_handler.UM001)
 }
 
 func SendValidationError(w http.ResponseWriter, msg string) {
-	sendJsonError(w, http.StatusBadRequest, msg)
+	sendJsonError(w, http.StatusBadRequest, "VA001", msg)
 }
 
 func SendInvalidUUIDError(w http.ResponseWriter, msg string) {
-	sendJsonError(w, http.StatusBadRequest, msg)
+	sendJsonError(w, http.StatusBadRequest, "UI001", msg)
 }
 
 func SendServiceError(w http.ResponseWriter, msg string) {
-	sendJsonError(w, http.StatusBadRequest, msg)
+	// errors here may vary depending on the service
+	errorCode := errors_handler.MapServiceError(msg)
+	sendJsonError(w, http.StatusBadRequest, errorCode, msg)
 }
 
 func SendInvalidQueryStringError(w http.ResponseWriter, msg string) {
-	sendJsonError(w, http.StatusBadRequest, msg)
+	sendJsonError(w, http.StatusBadRequest, "QS001", msg)
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
+	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
 )
@@ -23,7 +24,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 	err = row.Scan(&transactionResponse.Pagination.Count)
 	if err != nil {
 		tx.Rollback()
-		return transactionResponse, fmt.Errorf("Could not get balance from account")
+		return transactionResponse, fmt.Errorf(errors_handler.UM001)
 	}
 
 	rows, err := tx.Query("SELECT * FROM transactions WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;", account_id, limit, offset)
@@ -65,13 +66,13 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	err = row.Scan(&oldBalance)
 	if err != nil {
 		tx.Rollback()
-		return tr, fmt.Errorf("Could not get balance from account")
+		return tr, fmt.Errorf(errors_handler.TR001)
 	}
 
 	newBalance := utility.RoundToTwoDecimalPlaces(oldBalance + utility.RoundToTwoDecimalPlaces(fields.Amount))
 	if newBalance < 0 {
 		tx.Rollback()
-		return tr, fmt.Errorf("Transaction should not generate a negative balance")
+		return tr, fmt.Errorf(errors_handler.TR002)
 	}
 
 	row = tx.QueryRow(`UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING balance;`, newBalance, fields.AccountId)
@@ -115,19 +116,19 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	err = row.Scan(&oldT.ID, &oldT.AccountId, &oldT.PersonId, &oldT.Date, &oldT.Amount, &oldT.Description, &oldT.Balance, &oldT.CreatedAt, &oldT.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
-		return udT, fmt.Errorf("No transaction found in database")
+		return udT, fmt.Errorf(errors_handler.TR004)
 	}
 
 	if oldT.ID != transaction_id {
 		tx.Rollback()
-		return udT, fmt.Errorf("The transaction requested is not the last transaction")
+		return udT, fmt.Errorf(errors_handler.TR003)
 	}
 
 	newBalance := utility.RoundToTwoDecimalPlaces(oldT.Balance - oldT.Amount + fields.Amount)
 
 	if newBalance < 0 {
 		tx.Rollback()
-		return udT, fmt.Errorf("Transaction should not generate a negative balance")
+		return udT, fmt.Errorf(errors_handler.TR002)
 	}
 
 	row = tx.QueryRow(`UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING balance;`, newBalance, fields.AccountId)

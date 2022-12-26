@@ -100,7 +100,8 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(body, &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "Invalid data type", errResponse.Error)
+		assert.Equal(t, errors_handler.UM001, errResponse.Error)
+		assert.Equal(t, "UM001", errResponse.Code)
 	})
 
 	t.Run("Error when sending bad fields on creating a person", func(t *testing.T) {
@@ -122,6 +123,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, "Name is required", errResponse.Error)
+		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
 	t.Run("Create one money account and get it", func(t *testing.T) {
@@ -157,6 +159,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.Equal(t, "invalid UUID length: 10", errResponse.Error)
+		assert.Equal(t, "UI001", errResponse.Code)
 	})
 
 	t.Run("Get error when sending uregistered id", func(t *testing.T) {
@@ -171,7 +174,8 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		errResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, "sql: no rows in result set", errResponse.Error)
+		assert.Equal(t, errors_handler.DB001, errResponse.Error)
+		assert.Equal(t, "DB001", errResponse.Code)
 	})
 
 	t.Run("It should create and update one money account", func(t *testing.T) {
@@ -216,6 +220,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
 		assert.Equal(t, "invalid UUID length: 10", errResponse.Error)
+		assert.Equal(t, "UI001", errResponse.Code)
 	})
 
 	t.Run("Error when sending unregistered id when patching", func(t *testing.T) {
@@ -234,7 +239,8 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, "sql: no rows in result set", errResponse.Error)
+		assert.Equal(t, errors_handler.DB001, errResponse.Error)
+		assert.Equal(t, "DB001", errResponse.Code)
 	})
 
 	t.Run("Error when sending bad json on updating account", func(t *testing.T) {
@@ -256,7 +262,8 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(body, &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "Invalid data type", errResponse.Error)
+		assert.Equal(t, errors_handler.UM001, errResponse.Error)
+		assert.Equal(t, "UM001", errResponse.Code)
 	})
 
 	t.Run("Error when sending bad fields on updating account", func(t *testing.T) {
@@ -279,6 +286,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, "Name is required", errResponse.Error)
+		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
 	t.Run("It should create an account and delete it", func(t *testing.T) {
@@ -301,7 +309,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		deletedAccount, err := GetOneMoneyAccount(newId)
 		assert.Equal(t, deletedAccount.ID, uuid.UUID{})
 		assert.NotNil(t, err)
-		assert.Equal(t, "sql: no rows in result set", err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	DeleteAllMoneyAccounts()
@@ -322,6 +330,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, "invalid UUID length: 10", errResponse.Error)
+		assert.Equal(t, "UI001", errResponse.Code)
 	})
 
 	t.Run("it should send error when trying to delete unregistered account", func(t *testing.T) {
@@ -339,6 +348,7 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		err = json.Unmarshal(body, &errResponse)
 		assert.Nil(t, err)
 		assert.NotNil(t, errResponse.Error)
-		assert.Equal(t, "sql: no rows in result set", errResponse.Error)
+		assert.Equal(t, errors_handler.DB001, errResponse.Error)
+		assert.Equal(t, "DB001", errResponse.Code)
 	})
 }
