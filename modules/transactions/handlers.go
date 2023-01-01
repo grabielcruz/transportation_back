@@ -89,3 +89,49 @@ func UpdateLastTransactionHandler(w http.ResponseWriter, r *http.Request, ps htt
 	}
 	common.SendJson(w, http.StatusOK, updatedTransaction)
 }
+
+func DeleteLastTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	trashedTransaction, err := DeleteLastTransaction()
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
+	common.SendJson(w, http.StatusOK, trashedTransaction)
+}
+
+func GetTrashedTransactionsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	transactions, err := GetTrashedTransactions()
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
+	common.SendJson(w, http.StatusOK, transactions)
+}
+
+func RestoreTrashedTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	transaction_id, err := uuid.Parse(ps.ByName("transaction_id"))
+	if err != nil {
+		common.SendInvalidUUIDError(w, err.Error())
+		return
+	}
+	restoredTransaction, err := RestoreTrashedTransaction(transaction_id)
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
+	common.SendJson(w, http.StatusOK, restoredTransaction)
+}
+
+func DeleteTrashedTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	transaction_id, err := uuid.Parse(ps.ByName("transaction_id"))
+	if err != nil {
+		common.SendInvalidUUIDError(w, err.Error())
+		return
+	}
+	deletedTransaction, err := DeleteTrashedTransaction(transaction_id)
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
+	common.SendJson(w, http.StatusOK, deletedTransaction)
+}

@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
+	"github.com/grabielcruz/transportation_back/modules/persons"
+	"github.com/grabielcruz/transportation_back/modules/transactions"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -19,6 +21,8 @@ func SetupAndGetRoutes() *httprouter.Router {
 	router.GET("/ping", InitialHandler)
 
 	money_accounts.Routes(router)
+	persons.Routes(router)
+	transactions.Routes(router)
 
 	return router
 }

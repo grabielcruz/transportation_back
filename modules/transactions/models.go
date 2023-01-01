@@ -15,6 +15,14 @@ type Transaction struct {
 	common.Timestamps
 }
 
+type TrashedTransaction struct {
+	ID uuid.UUID `json:"id"`
+	TransactionFields
+	PersonName string `json:"person_name"`
+	common.Timestamps
+	DeletedAt time.Time `json:"deleted_at"`
+}
+
 type TransactionFields struct {
 	AccountId   uuid.UUID `json:"account_id"`
 	PersonId    uuid.UUID `json:"person_id"`
@@ -23,9 +31,16 @@ type TransactionFields struct {
 	Description string    `json:"description"`
 }
 
+// type TrashedTransactionFields struct {
+// 	ID uuid.UUID `json:"id"`
+// 	TransactionFields
+// 	common.Timestamps
+// 	DeletedAt time.Time `json:"deleted_at"`
+// }
+
 type TransationResponse struct {
 	Transactions []Transaction `json:"transactions"`
-	Pagination   common.Pagination
+	common.Pagination
 }
 
 type badTransactionFields struct {

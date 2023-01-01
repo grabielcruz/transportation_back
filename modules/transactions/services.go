@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
+	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
 )
@@ -17,11 +18,11 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 	tx, err := database.DB.Begin()
 	if err != nil {
 		tx.Rollback()
-		return transactionResponse, fmt.Errorf("Could not begin transaction")
+		return transactionResponse, fmt.Errorf(errors_handler.DB002)
 	}
 
 	row := tx.QueryRow("SELECT COUNT(*) FROM transactions WHERE account_id = $1;", account_id)
-	err = row.Scan(&transactionResponse.Pagination.Count)
+	err = row.Scan(&transactionResponse.Count)
 	if err != nil {
 		tx.Rollback()
 		return transactionResponse, fmt.Errorf(errors_handler.UM001)
@@ -30,7 +31,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 	rows, err := tx.Query("SELECT * FROM transactions WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;", account_id, limit, offset)
 	if err != nil {
 		tx.Rollback()
-		return transactionResponse, fmt.Errorf("Could not get transactions")
+		return transactionResponse, fmt.Errorf(errors_handler.TR007)
 	}
 
 	for rows.Next() {
@@ -38,7 +39,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 		err = rows.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			tx.Rollback()
-			return transactionResponse, fmt.Errorf("Could not read transaction")
+			return transactionResponse, fmt.Errorf(errors_handler.TR009)
 		}
 		t.PersonName, _ = persons.GetPersonsName(t.PersonId)
 		transactionResponse.Transactions = append(transactionResponse.Transactions, t)
@@ -46,8 +47,8 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 
 	tx.Commit()
 
-	transactionResponse.Pagination.Limit = limit
-	transactionResponse.Pagination.Offset = offset
+	transactionResponse.Limit = limit
+	transactionResponse.Offset = offset
 	return transactionResponse, nil
 }
 
@@ -60,7 +61,7 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		tx.Rollback()
-		return tr, fmt.Errorf("Could not begin transaction")
+		return tr, fmt.Errorf(errors_handler.DB002)
 	}
 	row := tx.QueryRow(`SELECT balance FROM money_accounts WHERE id = $1;`, fields.AccountId)
 	err = row.Scan(&oldBalance)
@@ -79,7 +80,7 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	err = row.Scan(&updatedBalance)
 	if err != nil {
 		tx.Rollback()
-		return tr, fmt.Errorf("Could not update account's balance")
+		return tr, fmt.Errorf(errors_handler.TR005)
 	}
 
 	if newBalance != updatedBalance {
@@ -109,7 +110,7 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	tx, err := database.DB.Begin()
 	if err != nil {
 		tx.Rollback()
-		return udT, fmt.Errorf("Could not begin transaction")
+		return udT, fmt.Errorf(errors_handler.DB002)
 	}
 
 	row := tx.QueryRow("SELECT * FROM transactions ORDER BY created_at DESC LIMIT 1;")
@@ -135,7 +136,7 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	err = row.Scan(&updatedBalance)
 	if err != nil {
 		tx.Rollback()
-		return udT, fmt.Errorf("Could not update account's balance")
+		return udT, fmt.Errorf(errors_handler.TR005)
 	}
 
 	if newBalance != updatedBalance {
@@ -151,13 +152,154 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 		return udT, fmt.Errorf("Could not update transaction with the id %v", transaction_id)
 	}
 
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return udT, fmt.Errorf(errors_handler.DB003)
+	}
 
 	udT.PersonName, _ = persons.GetPersonsName(udT.PersonId)
 
 	return udT, nil
 }
 
+func DeleteLastTransaction() (TrashedTransaction, error) {
+	dT := TrashedTransaction{} // deleted transaction
+	lT := Transaction{}        // last transaction
+	updatedBalance := float64(0)
+
+	tx, err := database.DB.Begin()
+	if err != nil {
+		tx.Rollback()
+		return dT, fmt.Errorf(errors_handler.DB002)
+	}
+
+	row := tx.QueryRow("DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY created_at DESC LIMIT 1) RETURNING *;")
+	err = row.Scan(&lT.ID, &lT.AccountId, &lT.PersonId, &lT.Date, &lT.Amount, &lT.Description, &lT.Balance, &lT.CreatedAt, &lT.UpdatedAt)
+	if err != nil {
+		tx.Rollback()
+		return dT, fmt.Errorf(errors_handler.TR004)
+	}
+
+	row = tx.QueryRow("INSERT INTO trashed_transactions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;", lT.ID, lT.AccountId, lT.PersonId, lT.Date, lT.Amount, lT.Description, lT.CreatedAt, lT.UpdatedAt, time.Now())
+	err = row.Scan(&dT.ID, &dT.AccountId, &dT.PersonId, &dT.Date, &dT.Amount, &dT.Description, &dT.CreatedAt, &dT.UpdatedAt, &dT.DeletedAt)
+	if err != nil {
+		tx.Rollback()
+		return dT, fmt.Errorf(errors_handler.TR006)
+	}
+
+	newBalance := utility.RoundToTwoDecimalPlaces(lT.Balance - lT.Amount)
+	// This should never happend
+	if newBalance < 0 {
+		tx.Rollback()
+		return dT, fmt.Errorf(errors_handler.TR002)
+	}
+
+	row = tx.QueryRow(`UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING balance;`, newBalance, lT.AccountId)
+	err = row.Scan(&updatedBalance)
+	if err != nil {
+		tx.Rollback()
+		return dT, fmt.Errorf(errors_handler.TR005)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return dT, fmt.Errorf(errors_handler.DB003)
+	}
+
+	return dT, nil
+}
+
+func GetTrashedTransactions() ([]TrashedTransaction, error) {
+	trashed := []TrashedTransaction{}
+	rows, err := database.DB.Query("SELECT * FROM trashed_transactions;")
+	if err != nil {
+		return trashed, fmt.Errorf(errors_handler.TR008)
+	}
+
+	for rows.Next() {
+		tt := TrashedTransaction{}
+		err = rows.Scan(&tt.ID, &tt.AccountId, &tt.PersonId, &tt.Date, &tt.Amount, &tt.Description, &tt.CreatedAt, &tt.UpdatedAt, &tt.DeletedAt)
+		if err != nil {
+			return trashed, fmt.Errorf(errors_handler.TR010)
+		}
+		tt.PersonName, _ = persons.GetPersonsName(tt.PersonId)
+		trashed = append(trashed, tt)
+	}
+
+	return trashed, nil
+}
+
+func RestoreTrashedTransaction(trashed_transaction_id uuid.UUID) (Transaction, error) {
+	rt := Transaction{}        // restored transaction
+	dT := TrashedTransaction{} // deleted transaction
+	updatedBalance := float64(0)
+
+	tx, err := database.DB.Begin()
+	if err != nil {
+		tx.Rollback()
+		return rt, fmt.Errorf(errors_handler.DB002)
+	}
+
+	row := tx.QueryRow("DELETE FROM trashed_transactions WHERE id = $1 RETURNING *;", trashed_transaction_id)
+	err = row.Scan(&dT.ID, &dT.AccountId, &dT.PersonId, &dT.Date, &dT.Amount, &dT.Description, &dT.CreatedAt, &dT.UpdatedAt, &dT.DeletedAt)
+	if err != nil {
+		tx.Rollback()
+		return rt, fmt.Errorf(errors_handler.TR011)
+	}
+
+	moneyAccount, err := money_accounts.GetOneMoneyAccount(dT.AccountId)
+	if err != nil {
+		tx.Rollback()
+		return rt, err
+	}
+
+	newBalance := utility.RoundToTwoDecimalPlaces(moneyAccount.Balance + dT.Amount)
+	if newBalance < 0 {
+		tx.Rollback()
+		return rt, fmt.Errorf(errors_handler.TR002)
+	}
+
+	row = tx.QueryRow("INSERT INTO transactions (id, account_id, person_id, date, amount, description, balance) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", dT.ID, dT.AccountId, dT.PersonId, dT.Date, dT.Amount, dT.Description, newBalance)
+	err = row.Scan(&rt.ID, &rt.AccountId, &rt.PersonId, &rt.Date, &rt.Amount, &rt.Description, &rt.Balance, &rt.CreatedAt, &rt.UpdatedAt)
+	if err != nil {
+		tx.Rollback()
+		return rt, fmt.Errorf(errors_handler.TR012)
+	}
+
+	row = tx.QueryRow("UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING balance;", newBalance, rt.AccountId)
+	err = row.Scan(&updatedBalance)
+	if err != nil {
+		tx.Rollback()
+		return rt, fmt.Errorf(errors_handler.TR005)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return rt, fmt.Errorf(errors_handler.DB003)
+	}
+
+	return rt, nil
+}
+
+func DeleteTrashedTransaction(trashed_transaction_id uuid.UUID) (TrashedTransaction, error) {
+	tt := TrashedTransaction{} // trashed_transaction
+	row := database.DB.QueryRow("DELETE FROM trashed_transactions WHERE id = $1 RETURNING *;", trashed_transaction_id)
+	err := row.Scan(&tt.ID, &tt.AccountId, &tt.PersonId, &tt.Date, &tt.Amount, &tt.Description, &tt.CreatedAt, &tt.UpdatedAt, &tt.DeletedAt)
+	if err != nil {
+		return tt, fmt.Errorf(errors_handler.TR011)
+	}
+	return tt, nil
+}
+
 func deleteAllTransactions() {
 	database.DB.QueryRow("DELETE FROM transactions;")
+}
+
+func deleteAllTrashedTransactions() {
+	database.DB.QueryRow("DELETE FROM trashed_transactions;")
+}
+
+func resetTransactions() {
+	deleteAllTransactions()
+	deleteAllTrashedTransactions()
 }

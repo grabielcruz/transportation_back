@@ -68,7 +68,7 @@ func TestTransactionsHandlers(t *testing.T) {
 
 		transations, err := GetTransactions(account.ID, Limit, Offset)
 		assert.Len(t, transations.Transactions, 1)
-		assert.Equal(t, 1, transations.Pagination.Count)
+		assert.Equal(t, 1, transations.Count)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -96,7 +96,7 @@ func TestTransactionsHandlers(t *testing.T) {
 
 		transations, err := GetTransactions(account.ID, Limit, Offset)
 		assert.Len(t, transations.Transactions, 1)
-		assert.Equal(t, 1, transations.Pagination.Count)
+		assert.Equal(t, 1, transations.Count)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -266,9 +266,9 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
 		assert.Nil(t, err)
 		assert.Len(t, transactionsResponse.Transactions, 1)
-		assert.Equal(t, Offset, transactionsResponse.Pagination.Offset)
-		assert.Equal(t, Limit, transactionsResponse.Pagination.Limit)
-		assert.Equal(t, 1, transactionsResponse.Pagination.Count)
+		assert.Equal(t, Offset, transactionsResponse.Offset)
+		assert.Equal(t, Limit, transactionsResponse.Limit)
+		assert.Equal(t, 1, transactionsResponse.Count)
 		assert.Equal(t, newTransaction.ID, transactionsResponse.Transactions[0].ID)
 		assert.Equal(t, newTransaction.Balance, transactionsResponse.Transactions[0].Balance)
 		assert.Equal(t, newTransaction.Amount, transactionsResponse.Transactions[0].Amount)
@@ -307,9 +307,9 @@ func TestTransactionsHandlers(t *testing.T) {
 		// the first transaction should be the last executed one
 		assert.Equal(t, updatedAccount.Balance, transactionsResponse.Transactions[0].Balance)
 		assert.Len(t, transactionsResponse.Transactions, Limit)
-		assert.Equal(t, transactionsResponse.Pagination.Count, 21)
-		assert.Equal(t, transactionsResponse.Pagination.Limit, Limit)
-		assert.Equal(t, transactionsResponse.Pagination.Offset, Offset)
+		assert.Equal(t, transactionsResponse.Count, 21)
+		assert.Equal(t, transactionsResponse.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Offset, Offset)
 
 		// offset = 10
 		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, 10)
@@ -325,9 +325,9 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Len(t, transactionsResponse.Transactions, Limit)
-		assert.Equal(t, transactionsResponse.Pagination.Count, 21)
-		assert.Equal(t, transactionsResponse.Pagination.Limit, Limit)
-		assert.Equal(t, transactionsResponse.Pagination.Offset, 10)
+		assert.Equal(t, transactionsResponse.Count, 21)
+		assert.Equal(t, transactionsResponse.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Offset, 10)
 
 		// offset = 20
 		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, 20)
@@ -343,9 +343,9 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Len(t, transactionsResponse.Transactions, 1)
-		assert.Equal(t, transactionsResponse.Pagination.Count, 21)
-		assert.Equal(t, transactionsResponse.Pagination.Limit, Limit)
-		assert.Equal(t, transactionsResponse.Pagination.Offset, 20)
+		assert.Equal(t, transactionsResponse.Count, 21)
+		assert.Equal(t, transactionsResponse.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Offset, 20)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
@@ -578,7 +578,7 @@ func TestTransactionsHandlers(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Error when updating transaction with zero amount", func(t *testing.T) {
+	t.Run("Error when updating last transaction with zero amount", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(1)
 		for i, v := range amounts {
 			personId := person.ID
@@ -615,6 +615,309 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
+	money_accounts.ResetAccountsBalance(account.ID)
+	resetTransactions()
+
+	t.Run("Should create two transactions, delete the last one and get it from trashed transactions", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(2)
+		for _, v := range amounts {
+			personId := person.ID
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		// delete transaction
+		req, err := http.NewRequest(http.MethodDelete, "/transactions", nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		deletedTransaction := TrashedTransaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &deletedTransaction)
+		assert.Nil(t, err)
+		/////////////////
+
+		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+
+		assert.Len(t, transactions.Transactions, 1)
+
+		// get trashed transactions
+		req2, err := http.NewRequest(http.MethodGet, "/trashed_transactions", nil)
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		trashedTransactions := []TrashedTransaction{}
+		err = json.Unmarshal(w2.Body.Bytes(), &trashedTransactions)
+		assert.Nil(t, err)
+		/////////////////
+
+		assert.Equal(t, deletedTransaction.ID, trashedTransactions[0].ID)
+		assert.Equal(t, deletedTransaction.AccountId, trashedTransactions[0].AccountId)
+		assert.Equal(t, deletedTransaction.PersonId, trashedTransactions[0].PersonId)
+		assert.Equal(t, deletedTransaction.Amount, trashedTransactions[0].Amount)
+		assert.Equal(t, deletedTransaction.Date.UTC(), trashedTransactions[0].Date.UTC())
+		assert.Equal(t, deletedTransaction.Description, trashedTransactions[0].Description)
+		assert.Equal(t, deletedTransaction.CreatedAt.UTC(), trashedTransactions[0].CreatedAt.UTC())
+		assert.Equal(t, deletedTransaction.UpdatedAt.UTC(), trashedTransactions[0].UpdatedAt.UTC())
+		assert.Equal(t, deletedTransaction.DeletedAt.UTC(), trashedTransactions[0].DeletedAt.UTC())
+		assert.Greater(t, trashedTransactions[0].DeletedAt.UTC(), trashedTransactions[0].CreatedAt.UTC())
+
+		// it should update account's balance, not a problem if the last transaction is deleted
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, updatedAccount.Balance, transactions.Transactions[0].Balance)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	resetTransactions()
+
+	t.Run("Error when deleting last transaction with no transactions", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodDelete, "/transactions", nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.TR004, errResponse.Error)
+		assert.Equal(t, "TR004", errResponse.Code)
+	})
+
+	t.Run("Should create two transactions, delete the last one and restore it", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(2)
+		for _, v := range amounts {
+			personId := person.ID
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		// delete last transaction
+		req, err := http.NewRequest(http.MethodDelete, "/transactions", nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		deletedTransaction := TrashedTransaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &deletedTransaction)
+		assert.Nil(t, err)
+		///////////////////////////
+
+		// restore last transaction
+		buf := bytes.Buffer{}
+		req2, err := http.NewRequest(http.MethodPost, "/trashed_transactions/"+deletedTransaction.ID.String(), &buf)
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		restoredTransaction := Transaction{}
+		err = json.Unmarshal(w2.Body.Bytes(), &restoredTransaction)
+		assert.Nil(t, err)
+		///////////////////////////////
+
+		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+		assert.Len(t, transactions.Transactions, 2)
+
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, updatedAccount.Balance, transactions.Transactions[0].Balance)
+
+		// get trashed transactions
+		req3, err := http.NewRequest(http.MethodGet, "/trashed_transactions", nil)
+		assert.Nil(t, err)
+
+		w3 := httptest.NewRecorder()
+		router.ServeHTTP(w3, req3)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		trashedTransactions := []TrashedTransaction{}
+		err = json.Unmarshal(w3.Body.Bytes(), &trashedTransactions)
+		assert.Nil(t, err)
+		/////////////////
+
+		assert.Len(t, trashedTransactions, 0)
+
+		assert.Equal(t, deletedTransaction.ID, restoredTransaction.ID)
+		assert.Equal(t, deletedTransaction.AccountId, restoredTransaction.AccountId)
+		assert.Equal(t, deletedTransaction.PersonId, restoredTransaction.PersonId)
+		assert.Equal(t, deletedTransaction.Amount, restoredTransaction.Amount)
+		assert.Equal(t, deletedTransaction.Date, restoredTransaction.Date)
+		assert.Equal(t, deletedTransaction.Description, restoredTransaction.Description)
+		assert.Less(t, deletedTransaction.DeletedAt, restoredTransaction.CreatedAt)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	resetTransactions()
+
+	t.Run("Error when restoring unexisting transaction", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		req, err := http.NewRequest(http.MethodPost, "/trashed_transactions/"+uuid.UUID{}.String(), &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.TR011, errResponse.Error)
+		assert.Equal(t, "TR011", errResponse.Code)
+	})
+
+	t.Run("Error when restoring transaction that generates negative balance", func(t *testing.T) {
+		transactionFields := GenerateTransactionFields(account.ID, person.ID)
+		transactionFields.Amount = float64(100)
+		_, err := CreateTransaction(transactionFields)
+		assert.Nil(t, err)
+
+		transactionFields2 := GenerateTransactionFields(account.ID, person.ID)
+		transactionFields2.Amount = float64(-100)
+		_, err = CreateTransaction(transactionFields2)
+		assert.Nil(t, err)
+
+		// delete last transaction
+		req, err := http.NewRequest(http.MethodDelete, "/transactions", nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		deletedTransaction := TrashedTransaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &deletedTransaction)
+		assert.Nil(t, err)
+		///////////////////////////
+
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
+		assert.Nil(t, err)
+
+		transactionFields3 := GenerateTransactionFields(account.ID, uuid.UUID{})
+		transactionFields3.Amount = updatedAccount.Balance * -1 // generates zero balance on account
+
+		_, err = CreateTransaction(transactionFields3)
+		assert.Nil(t, err)
+
+		// restore last transaction
+		buf := bytes.Buffer{}
+		req2, err := http.NewRequest(http.MethodPost, "/trashed_transactions/"+deletedTransaction.ID.String(), &buf)
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w2.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.TR002, errResponse.Error)
+		assert.Equal(t, "TR002", errResponse.Code)
+		///////////////////////////////
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	resetTransactions()
+
+	t.Run("Should create two transactions, delete the last one and then delete it permanently", func(t *testing.T) {
+		amounts := utility.GetSliceOfAmounts(2)
+		for _, v := range amounts {
+			personId := person.ID
+			transactionFields := GenerateTransactionFields(account.ID, personId)
+			transactionFields.Amount = v
+			_, err := CreateTransaction(transactionFields)
+			assert.Nil(t, err)
+		}
+
+		// delete last transaction
+		req, err := http.NewRequest(http.MethodDelete, "/transactions", nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		lastTransaction := TrashedTransaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &lastTransaction)
+		assert.Nil(t, err)
+		///////////////////////////
+
+		// delete trashed transaction permanently
+		req2, err := http.NewRequest(http.MethodDelete, "/trashed_transactions/"+lastTransaction.ID.String(), nil)
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		permanently_deleted := TrashedTransaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &permanently_deleted)
+		assert.Nil(t, err)
+		///////////////////////////
+
+		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		assert.Nil(t, err)
+		assert.Len(t, transactions.Transactions, 1)
+
+		// get trashed transactions
+		req3, err := http.NewRequest(http.MethodGet, "/trashed_transactions", nil)
+		assert.Nil(t, err)
+
+		w3 := httptest.NewRecorder()
+		router.ServeHTTP(w3, req3)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		trashedTransactions := []TrashedTransaction{}
+		err = json.Unmarshal(w3.Body.Bytes(), &trashedTransactions)
+		assert.Nil(t, err)
+		/////////////////
+
+		assert.Len(t, trashedTransactions, 0)
+		assert.Equal(t, lastTransaction.ID, permanently_deleted.ID)
+		assert.Equal(t, lastTransaction.AccountId, permanently_deleted.AccountId)
+		assert.Equal(t, lastTransaction.PersonId, permanently_deleted.PersonId)
+		assert.Equal(t, lastTransaction.Amount, permanently_deleted.Amount)
+		assert.Equal(t, lastTransaction.Date, permanently_deleted.Date)
+		assert.Equal(t, lastTransaction.Description, permanently_deleted.Description)
+		assert.Equal(t, lastTransaction.DeletedAt, permanently_deleted.DeletedAt)
+
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	resetTransactions()
+
+	t.Run("Error when deleting unexisting trashed transaction", func(t *testing.T) {
+		// delete trashed transaction permanently
+		req, err := http.NewRequest(http.MethodDelete, "/trashed_transactions/"+uuid.UUID{}.String(), nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		///////////////////////////
+		assert.Equal(t, errors_handler.TR011, errResponse.Error)
+		assert.Equal(t, "TR011", errResponse.Code)
+	})
 	// at the end of all transactions services tests
 	money_accounts.DeleteAllMoneyAccounts()
 	persons.DeleteAllPersons()
