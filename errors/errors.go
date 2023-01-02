@@ -16,6 +16,14 @@ func MapServiceError(error_msg string) string {
 	switch error_msg {
 	case DB001:
 		return "DB001"
+	case CU001:
+		return "CU001"
+	case CU002:
+		return "CU002"
+	case CU003:
+		return "CU003"
+	case CU004:
+		return "CU004"
 	case TR001:
 		return "TR001"
 	case TR002:

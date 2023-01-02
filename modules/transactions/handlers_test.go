@@ -782,6 +782,22 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "TR011", errResponse.Code)
 	})
 
+	t.Run("Error when restoring transaction with bad id", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		req, err := http.NewRequest(http.MethodPost, "/trashed_transactions/"+"bad_id", &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, "invalid UUID length: 6", errResponse.Error)
+		assert.Equal(t, "UI001", errResponse.Code)
+	})
+
 	t.Run("Error when restoring transaction that generates negative balance", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID, person.ID)
 		transactionFields.Amount = float64(100)
@@ -917,6 +933,23 @@ func TestTransactionsHandlers(t *testing.T) {
 		///////////////////////////
 		assert.Equal(t, errors_handler.TR011, errResponse.Error)
 		assert.Equal(t, "TR011", errResponse.Code)
+	})
+
+	t.Run("Error when deleting trashed transaction with bad id", func(t *testing.T) {
+		// delete trashed transaction permanently
+		req, err := http.NewRequest(http.MethodDelete, "/trashed_transactions/"+"bad_id", nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		///////////////////////////
+		assert.Equal(t, "invalid UUID length: 6", errResponse.Error)
+		assert.Equal(t, "UI001", errResponse.Code)
 	})
 	// at the end of all transactions services tests
 	money_accounts.DeleteAllMoneyAccounts()

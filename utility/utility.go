@@ -41,7 +41,7 @@ func GetRandomBoolean() bool {
 func GetRandomCurrency() string {
 	curr := "USD"
 	if GetRandomBoolean() {
-		curr = "VES"
+		curr = "VED"
 	}
 	return curr
 }

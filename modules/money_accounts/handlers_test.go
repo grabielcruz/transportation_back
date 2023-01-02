@@ -25,12 +25,12 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 	defer database.CloseConnection()
 	router := httprouter.New()
 	Routes(router)
-	w := httptest.NewRecorder()
 
 	t.Run("Get empty slice of accounts initially", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts", nil)
 		assert.Nil(t, err)
 
+		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 

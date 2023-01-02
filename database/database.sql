@@ -3,17 +3,23 @@ DROP TABLE IF EXISTS trashed_transactions;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS money_accounts;
 DROP TABLE IF EXISTS persons;
-DROP TABLE IF EXISTS currency;
+DROP TABLE IF EXISTS currencies;
+
+CREATE TABLE currencies (
+  currency VARCHAR (3) PRIMARY KEY
+);
+
+INSERT INTO currencies (currency) VALUES ('VED'), ('USD');
 
 CREATE TABLE money_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
   name VARCHAR NOT NULL,
   balance NUMERIC(17,2) DEFAULT 0.00 CHECK (balance >= 0),
-
   details VARCHAR,
-  currency VARCHAR NOT NULL,
+  currency VARCHAR (3),
   created_at TIMESTAMPTZ DEFAULT NOW(), 
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY (currency) REFERENCES currencies(currency)
 );
 
 CREATE TABLE persons (
@@ -54,6 +60,4 @@ CREATE TABLE trashed_transactions (
   FOREIGN KEY (person_id) REFERENCES persons(id)
 );
 
-CREATE TABLE currencies (
-  currency VARCHAR (3) PRIMARY KEY
-);
+

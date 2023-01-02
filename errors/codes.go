@@ -25,6 +25,12 @@ const SE001 = "Service error"
 // Querystring error
 const QS001 = "Query string error"
 
+// Currencies
+const CU001 = "Could not delete VED or USD currency"
+const CU002 = "Currency code should be 3 upper case letters"
+const CU003 = "Currency already exists"
+const CU004 = "Currency is being used"
+
 // Transactions
 const TR001 = "Could not get balance from account"
 const TR002 = "Transaction should not generate a negative balance"
