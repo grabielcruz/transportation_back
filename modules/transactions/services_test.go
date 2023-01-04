@@ -19,8 +19,10 @@ func TestTransactionServices(t *testing.T) {
 	database.SetupDB(envPath)
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
-	account := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
-	person := persons.CreatePerson(persons.GeneratePersonFields())
+	account, err := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
+	assert.Nil(t, err)
+	person, err := persons.CreatePerson(persons.GeneratePersonFields())
+	assert.Nil(t, err)
 
 	t.Run("Get transaction response with zero transactions", func(t *testing.T) {
 		transactions, err := GetTransactions(account.ID, Limit, Offset)

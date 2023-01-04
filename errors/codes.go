@@ -25,6 +25,9 @@ const SE001 = "Service error"
 // Querystring error
 const QS001 = "Query string error"
 
+// Persons
+const PE001 = "Document already in use"
+
 // Currencies
 const CU001 = "Could not delete VED or USD currency"
 const CU002 = "Currency code should be 3 upper case letters"

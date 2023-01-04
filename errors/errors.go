@@ -24,6 +24,8 @@ func MapServiceError(error_msg string) string {
 		return "CU003"
 	case CU004:
 		return "CU004"
+	case PE001:
+		return "PE001"
 	case TR001:
 		return "TR001"
 	case TR002:

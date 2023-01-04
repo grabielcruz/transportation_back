@@ -208,7 +208,8 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 
 		accountsFields := money_accounts.GenerateAccountFields()
 		accountsFields.Currency = createdCurrency
-		newMoneyAccount := money_accounts.CreateMoneyAccount(accountsFields)
+		newMoneyAccount, err := money_accounts.CreateMoneyAccount(accountsFields)
+		assert.Nil(t, err)
 		assert.Equal(t, newMoneyAccount.Currency, createdCurrency)
 
 		buf := bytes.Buffer{}

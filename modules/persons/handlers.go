@@ -31,7 +31,11 @@ func CreatePersonHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Pa
 		common.SendValidationError(w, err.Error())
 		return
 	}
-	person = CreatePerson(fields)
+	person, err = CreatePerson(fields)
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
 	common.SendJson(w, http.StatusCreated, person)
 }
 

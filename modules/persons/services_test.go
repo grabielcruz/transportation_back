@@ -25,7 +25,8 @@ func TestPersonService(t *testing.T) {
 
 	t.Run("Create one person", func(t *testing.T) {
 		personFields := GeneratePersonFields()
-		createdPerson := CreatePerson(personFields)
+		createdPerson, err := CreatePerson(personFields)
+		assert.Nil(t, err)
 		assert.Equal(t, personFields.Name, createdPerson.Name)
 		assert.Equal(t, personFields.Document, createdPerson.Document)
 	})
@@ -42,7 +43,8 @@ func TestPersonService(t *testing.T) {
 	DeleteAllPersons()
 
 	t.Run("Create one person and get it", func(t *testing.T) {
-		newPerson := CreatePerson(GeneratePersonFields())
+		newPerson, err := CreatePerson(GeneratePersonFields())
+		assert.Nil(t, err)
 		obtainedPerson, err := GetOnePerson(newPerson.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, newPerson.ID, obtainedPerson.ID)
@@ -60,7 +62,8 @@ func TestPersonService(t *testing.T) {
 	t.Run("It should create and update one person", func(t *testing.T) {
 		createFields := GeneratePersonFields()
 		updateFields := GeneratePersonFields()
-		newPerson := CreatePerson(createFields)
+		newPerson, err := CreatePerson(createFields)
+		assert.Nil(t, err)
 		updatedPerson, err := UpdatePerson(newPerson.ID, updateFields)
 		assert.Nil(t, err)
 		assert.Equal(t, newPerson.ID, updatedPerson.ID)
@@ -79,7 +82,8 @@ func TestPersonService(t *testing.T) {
 	})
 
 	t.Run("Create a person and delete it", func(t *testing.T) {
-		newPerson := CreatePerson(GeneratePersonFields())
+		newPerson, err := CreatePerson(GeneratePersonFields())
+		assert.Nil(t, err)
 		deletedId, err := DeleteOnePerson(newPerson.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, newPerson.ID, deletedId.ID)
@@ -95,7 +99,8 @@ func TestPersonService(t *testing.T) {
 	})
 
 	t.Run("Create one person and get its name", func(t *testing.T) {
-		newPerson := CreatePerson(GeneratePersonFields())
+		newPerson, err := CreatePerson(GeneratePersonFields())
+		assert.Nil(t, err)
 		name, err := GetPersonsName(newPerson.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, newPerson.Name, name)
@@ -105,6 +110,20 @@ func TestPersonService(t *testing.T) {
 		_, err := GetPersonsName(uuid.UUID{})
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
+	})
+
+	t.Run("Error when creating two persons with the same document", func(t *testing.T) {
+		fields1 := GeneratePersonFields()
+		fields1.Document = "v7777777"
+		fields2 := GeneratePersonFields()
+		fields2.Document = "v7777777"
+
+		_, err := CreatePerson(fields1)
+		assert.Nil(t, err)
+
+		_, err = CreatePerson(fields2)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.PE001, err.Error())
 	})
 
 }

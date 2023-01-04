@@ -28,8 +28,10 @@ func TestTransactionsHandlers(t *testing.T) {
 	router := httprouter.New()
 	Routes(router)
 
-	account := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
-	person := persons.CreatePerson(persons.GeneratePersonFields())
+	account, err := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
+	assert.Nil(t, err)
+	person, err := persons.CreatePerson(persons.GeneratePersonFields())
+	assert.Nil(t, err)
 
 	t.Run("Get a transaction response with zero transactions initially", func(t *testing.T) {
 		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)

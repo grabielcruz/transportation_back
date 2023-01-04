@@ -27,7 +27,8 @@ func TestMoneyAccountServices(t *testing.T) {
 
 	t.Run("Create one money account", func(t *testing.T) {
 		accountFields := GenerateAccountFields()
-		createdMoneyAccount := CreateMoneyAccount(accountFields)
+		createdMoneyAccount, err := CreateMoneyAccount(accountFields)
+		assert.Nil(t, err)
 		assert.Equal(t, accountFields.Name, createdMoneyAccount.Name)
 		assert.Equal(t, accountFields.Details, createdMoneyAccount.Details)
 		assert.Equal(t, accountFields.Currency, createdMoneyAccount.Currency)
@@ -46,7 +47,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	DeleteAllMoneyAccounts()
 
 	t.Run("Create one money account and get it", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		createdMoneyAccount, err := CreateMoneyAccount(GenerateAccountFields())
+		assert.Nil(t, err)
 		obtainedMoneyAccount, err := GetOneMoneyAccount(createdMoneyAccount.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, createdMoneyAccount.ID, obtainedMoneyAccount.ID)
@@ -62,7 +64,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Create one money account and delete it", func(t *testing.T) {
-		createdMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		createdMoneyAccount, err := CreateMoneyAccount(GenerateAccountFields())
+		assert.Nil(t, err)
 		deletedId, err := DeleteOneMoneyAccount(createdMoneyAccount.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, createdMoneyAccount.ID, deletedId.ID)
@@ -82,7 +85,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	t.Run("It should create and update one money account", func(t *testing.T) {
 		createFields := GenerateAccountFields()
 		updateFields := GenerateAccountFields()
-		createdAccount := CreateMoneyAccount(createFields)
+		createdAccount, err := CreateMoneyAccount(createFields)
+		assert.Nil(t, err)
 		updatedAccount, err := UpdateMoneyAccount(createdAccount.ID, updateFields)
 		assert.Nil(t, err)
 		assert.Equal(t, updatedAccount.ID, createdAccount.ID)
@@ -102,7 +106,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Create one money account and get its name", func(t *testing.T) {
-		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		newMoneyAccount, err := CreateMoneyAccount(GenerateAccountFields())
+		assert.Nil(t, err)
 		name, err := getAccountsName(newMoneyAccount.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, newMoneyAccount.Name, name)
@@ -116,7 +121,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Set accounts balance", func(t *testing.T) {
-		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		newMoneyAccount, err := CreateMoneyAccount(GenerateAccountFields())
+		assert.Nil(t, err)
 		newBalance := utility.GetRandomBalance()
 		updatedId, err := setAccountsBalance(newMoneyAccount.ID, newBalance)
 		assert.Nil(t, err)
@@ -137,7 +143,8 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Reset accounts balance", func(t *testing.T) {
-		newMoneyAccount := CreateMoneyAccount(GenerateAccountFields())
+		newMoneyAccount, err := CreateMoneyAccount(GenerateAccountFields())
+		assert.Nil(t, err)
 		updatedId, err := ResetAccountsBalance(newMoneyAccount.ID)
 		assert.Nil(t, err)
 		assert.Equal(t, newMoneyAccount.ID, updatedId.ID)

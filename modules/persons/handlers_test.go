@@ -128,7 +128,9 @@ func TestPersonsHandlers(t *testing.T) {
 
 	t.Run("Create one person and get it", func(t *testing.T) {
 		fields := GeneratePersonFields()
-		wantedId := CreatePerson(fields).ID
+		newPerson, err := CreatePerson(fields)
+		assert.Nil(t, err)
+		wantedId := newPerson.ID
 
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodGet, "/persons/"+wantedId.String(), nil)
@@ -177,10 +179,12 @@ func TestPersonsHandlers(t *testing.T) {
 
 	t.Run("It should create and update one person", func(t *testing.T) {
 		createFields := GeneratePersonFields()
-		wantedId := CreatePerson(createFields).ID
+		newPerson, err := CreatePerson(createFields)
+		assert.Nil(t, err)
+		wantedId := newPerson.ID
 		buf := bytes.Buffer{}
 		updateFields := GeneratePersonFields()
-		err := json.NewEncoder(&buf).Encode(updateFields)
+		err = json.NewEncoder(&buf).Encode(updateFields)
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()
@@ -279,7 +283,9 @@ func TestPersonsHandlers(t *testing.T) {
 
 	t.Run("It should create a person and delete it", func(t *testing.T) {
 		fields := GeneratePersonFields()
-		newId := CreatePerson(fields).ID
+		newPerson, err := CreatePerson(fields)
+		assert.Nil(t, err)
+		newId := newPerson.ID
 
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodDelete, "/persons/"+newId.String(), nil)
@@ -340,4 +346,35 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Equal(t, "DB001", errResponse.Code)
 	})
 
+	t.Run("Error when creating two person with the same document", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		fields := GeneratePersonFields()
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/persons", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		fields2 := GeneratePersonFields()
+		fields2.Document = fields.Document
+		err = json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		req2, err := http.NewRequest(http.MethodPost, "/persons", &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusBadRequest, w2.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w2.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.PE001, errResponse.Error)
+		assert.Equal(t, "PE001", errResponse.Code)
+	})
 }

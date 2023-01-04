@@ -128,7 +128,9 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 
 	t.Run("Create one money account and get it", func(t *testing.T) {
 		fields := GenerateAccountFields()
-		wantedId := CreateMoneyAccount(fields).ID
+		newMoneyAccount, err := CreateMoneyAccount(fields)
+		assert.Nil(t, err)
+		wantedId := newMoneyAccount.ID
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodGet, "/money_accounts/"+wantedId.String(), nil)
 		assert.Nil(t, err)
@@ -180,10 +182,12 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 
 	t.Run("It should create and update one money account", func(t *testing.T) {
 		createFields := GenerateAccountFields()
-		wantedId := CreateMoneyAccount(createFields).ID
+		newMoneyAccount, err := CreateMoneyAccount(createFields)
+		assert.Nil(t, err)
+		wantedId := newMoneyAccount.ID
 		buf := bytes.Buffer{}
 		updateFields := GenerateAccountFields()
-		err := json.NewEncoder(&buf).Encode(updateFields)
+		err = json.NewEncoder(&buf).Encode(updateFields)
 		assert.Nil(t, err)
 
 		w := httptest.NewRecorder()
@@ -291,7 +295,9 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 
 	t.Run("It should create an account and delete it", func(t *testing.T) {
 		fields := GenerateAccountFields()
-		newId := CreateMoneyAccount(fields).ID
+		newMoneyAccount, err := CreateMoneyAccount(fields)
+		assert.Nil(t, err)
+		newId := newMoneyAccount.ID
 
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodDelete, "/money_accounts/"+newId.String(), nil)

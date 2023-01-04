@@ -31,7 +31,11 @@ func CreateMoneyAccountHandler(w http.ResponseWriter, r *http.Request, _ httprou
 		common.SendValidationError(w, err.Error())
 		return
 	}
-	account = CreateMoneyAccount(fields)
+	account, err = CreateMoneyAccount(fields)
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
 	common.SendJson(w, http.StatusCreated, account)
 }
 

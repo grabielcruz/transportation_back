@@ -1,6 +1,7 @@
 package persons
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,14 +26,16 @@ func GetPersons() []Person {
 	return persons
 }
 
-func CreatePerson(fields PersonFields) Person {
+func CreatePerson(fields PersonFields) (Person, error) {
 	p := Person{}
 	row := database.DB.QueryRow(
 		"INSERT INTO persons (name, document) VALUES ($1, $2) RETURNING *;",
 		fields.Name, fields.Document)
 	err := row.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
-	errors_handler.CheckError(err)
-	return p
+	if err != nil {
+		return p, serviceErrorMapper(err)
+	}
+	return p, nil
 }
 
 func GetOnePerson(person_id uuid.UUID) (Person, error) {
@@ -90,4 +93,12 @@ func GetPersonsName(person_id uuid.UUID) (string, error) {
 
 func DeleteAllPersons() {
 	database.DB.QueryRow("DELETE FROM persons;")
+}
+
+func serviceErrorMapper(err error) error {
+	switch err.Error() {
+	case "pq: duplicate key value violates unique constraint \"persons_document_key\"":
+		return fmt.Errorf("Document already in use")
+	}
+	return err
 }

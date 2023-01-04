@@ -25,14 +25,16 @@ func GetMoneyAccounts() []MoneyAccount {
 	return moneyAccounts
 }
 
-func CreateMoneyAccount(fields MoneyAccountFields) MoneyAccount {
+func CreateMoneyAccount(fields MoneyAccountFields) (MoneyAccount, error) {
 	var nma MoneyAccount
 	row := database.DB.QueryRow(
 		"INSERT INTO money_accounts (name, details, currency) VALUES ($1, $2, $3) RETURNING *;",
 		fields.Name, fields.Details, fields.Currency)
 	err := row.Scan(&nma.ID, &nma.Name, &nma.Balance, &nma.Details, &nma.Currency, &nma.CreatedAt, &nma.UpdatedAt)
-	errors_handler.CheckError(err)
-	return nma
+	if err != nil {
+		return nma, err
+	}
+	return nma, nil
 }
 
 func GetOneMoneyAccount(acount_id uuid.UUID) (MoneyAccount, error) {
