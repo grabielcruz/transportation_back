@@ -24,6 +24,36 @@ func GetRandomBalance() float64 {
 	return RoundToTwoDecimalPlaces(balance)
 }
 
+func GetRandomNonZeroBalance() float64 {
+	balance := GetRandomBalance()
+	if balance == 0 {
+		balance = 1.00
+	}
+	return balance
+}
+
+func GetRandomPositiveBalance() float64 {
+	balance := GetRandomBalance()
+	if balance == 0 {
+		balance = 1.00
+	}
+	if balance < 0 {
+		balance = balance * -1
+	}
+	return balance
+}
+
+func GetRandomNegativeBalance() float64 {
+	balance := GetRandomBalance()
+	if balance == 0 {
+		balance = -1.00
+	}
+	if balance > 0 {
+		balance = balance * -1
+	}
+	return balance
+}
+
 func getRandomFloat64() float64 {
 	rand.Seed(change_seed())
 	return rand.Float64()

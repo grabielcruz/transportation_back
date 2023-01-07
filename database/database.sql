@@ -2,7 +2,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 DROP TABLE IF EXISTS trashed_transactions;
 DROP TABLE IF EXISTS transactions;
 DROP TABLE IF EXISTS money_accounts;
-DROP TABLE IF EXISTS bills;
+DROP TABLE IF EXISTS pending_bills;
+DROP TABLE IF EXISTS closed_bills;
 DROP TABLE IF EXISTS persons;
 DROP TABLE IF EXISTS currencies;
 
@@ -17,7 +18,7 @@ CREATE TABLE money_accounts (
   name VARCHAR NOT NULL,
   balance NUMERIC(17,2) DEFAULT 0.00 CHECK (balance >= 0),
   details VARCHAR,
-  currency VARCHAR (3),
+  currency VARCHAR (3) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (currency) REFERENCES currencies(currency)
@@ -31,6 +32,7 @@ CREATE TABLE persons (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- used in transactions for records without a person
 INSERT INTO persons (id, name, document) VALUES (uuid_nil(), '', '');
 
 CREATE TABLE transactions (
@@ -61,14 +63,32 @@ CREATE TABLE trashed_transactions (
   FOREIGN KEY (person_id) REFERENCES persons(id)
 );
 
-CREATE TABLE bills (
-  id uuid PRIMARY KEY,
-  person_id uuid,
+CREATE TABLE pending_bills (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+  person_id uuid NOT NULL,
   date DATE DEFAULT NOW(),
   description VARCHAR NOT NULL,
-  currency VARCHAR (3),
-  amount NUMERIC(17,2) NOT NULL CHECK (amount >= 0),
-  pending NUMERIC(17,2) NOT NULL CHECK (pending >= 0),
+  currency VARCHAR (3) NOT NULL,
+  amount NUMERIC(17,2) NOT NULL CHECK (amount <> 0),
+  -- when pending is zero, the bill is considered to be paid
+  pending NUMERIC(17,2) NOT NULL CHECK (pending <> 0), 
+  created_at TIMESTAMPTZ DEFAULT NOW(), 
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY (person_id) REFERENCES persons(id),
+  FOREIGN KEY (currency) REFERENCES currencies(currency)
+);
+
+-- to pay: has amount negative
+-- to charge: has amount positive
+CREATE TABLE closed_bills (
+  id uuid PRIMARY KEY,
+  person_id uuid NOT NULL,
+  date DATE DEFAULT NOW(),
+  description VARCHAR NOT NULL,
+  currency VARCHAR (3) NOT NULL,
+  amount NUMERIC(17,2) NOT NULL CHECK (amount <> 0),
+  -- when pending is zero, the bill is considered to be paid
+  pending NUMERIC(17,2) NOT NULL CHECK (pending = 0), 
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (person_id) REFERENCES persons(id),

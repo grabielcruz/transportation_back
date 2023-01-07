@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
+	"github.com/grabielcruz/transportation_back/modules/config"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
@@ -25,12 +26,12 @@ func TestTransactionServices(t *testing.T) {
 	assert.Nil(t, err)
 
 	t.Run("Get transaction response with zero transactions", func(t *testing.T) {
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, transactions.Transactions, 0)
 		assert.Equal(t, transactions.Count, 0)
-		assert.Equal(t, transactions.Offset, Offset)
-		assert.Equal(t, transactions.Limit, Limit)
+		assert.Equal(t, transactions.Offset, config.Offset)
+		assert.Equal(t, transactions.Limit, config.Limit)
 	})
 
 	t.Run("Create one transaction without person", func(t *testing.T) {
@@ -87,20 +88,48 @@ func TestTransactionServices(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	resetTransactions()
 
-	t.Run("Create one transaction and get it", func(t *testing.T) {
+	t.Run("Create one transaction and get it in paginated response", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID, person.ID)
 		newTransaction, err := CreateTransaction(transactionFields)
 		assert.Nil(t, err)
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
-		assert.Equal(t, Offset, transactions.Offset)
-		assert.Equal(t, Limit, transactions.Limit)
+		assert.Equal(t, config.Offset, transactions.Offset)
+		assert.Equal(t, config.Limit, transactions.Limit)
 		assert.Equal(t, 1, transactions.Count)
 		assert.Equal(t, newTransaction, transactions.Transactions[0])
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
 	resetTransactions()
+
+	t.Run("Create one transaction and get it with single response", func(t *testing.T) {
+		transactionFields := GenerateTransactionFields(account.ID, person.ID)
+		newTransaction, err := CreateTransaction(transactionFields)
+		assert.Nil(t, err)
+		transaction, err := GetTransaction(newTransaction.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newTransaction.ID, transaction.ID)
+		assert.Equal(t, newTransaction.AccountId, transaction.AccountId)
+		assert.Equal(t, newTransaction.Amount, transaction.Amount)
+		assert.Equal(t, newTransaction.Balance, transaction.Balance)
+		assert.Equal(t, newTransaction.CreatedAt, transaction.CreatedAt)
+		assert.Equal(t, newTransaction.UpdatedAt, transaction.UpdatedAt)
+		assert.Equal(t, newTransaction.Date, transaction.Date)
+		assert.Equal(t, newTransaction.Description, transaction.Description)
+		assert.Equal(t, newTransaction.PersonId, transaction.PersonId)
+		assert.Equal(t, newTransaction.PersonName, transaction.PersonName)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	resetTransactions()
+
+	t.Run("Error when getting non registered person", func(t *testing.T) {
+		_, err := GetTransaction(uuid.UUID{})
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR004, err.Error())
+
+	})
 
 	t.Run("Execute 100 transactions and get accounts balance right", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(100)
@@ -137,7 +166,7 @@ func TestTransactionServices(t *testing.T) {
 		}
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Equal(t, transactions.Transactions[0].Balance, updatedAccount.Balance)
 	})
@@ -157,7 +186,7 @@ func TestTransactionServices(t *testing.T) {
 			_, err := CreateTransaction(transactionFields)
 			assert.Nil(t, err)
 		}
-		transactions, err := GetTransactions(account.ID, Limit, 50)
+		transactions, err := GetTransactions(account.ID, config.Limit, 50)
 		assert.Nil(t, err)
 		assert.Equal(t, transactions.Transactions[0].Balance, transactions.Transactions[0].Amount)
 		assert.Equal(t, 51, transactions.Count)
@@ -181,7 +210,7 @@ func TestTransactionServices(t *testing.T) {
 		updatedAccountFirst, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
 
-		transactionResponseFirst, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponseFirst, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		assert.Equal(t, updatedAccountFirst.Balance, transactionResponseFirst.Transactions[0].Balance)
@@ -198,7 +227,7 @@ func TestTransactionServices(t *testing.T) {
 		updatedAccountSecond, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
 
-		transactionResponseSecond, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponseSecond, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		assert.Equal(t, transactionResponseSecond.Transactions[0], updatedTransaction)
@@ -232,7 +261,7 @@ func TestTransactionServices(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponse, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		updateFields := GenerateTransactionFields(account.ID, person.ID)
@@ -266,7 +295,7 @@ func TestTransactionServices(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponse, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		updateFields := GenerateTransactionFields(account.ID, person.ID)
@@ -294,7 +323,7 @@ func TestTransactionServices(t *testing.T) {
 		deletedTransaction, err := DeleteLastTransaction()
 		assert.Nil(t, err)
 
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		assert.Len(t, transactions.Transactions, 1)
@@ -349,7 +378,7 @@ func TestTransactionServices(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Len(t, trashedTransactions, 0)
 
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, transactions.Transactions, 2)
 
@@ -422,7 +451,7 @@ func TestTransactionServices(t *testing.T) {
 		permanently_deleted, err := DeleteTrashedTransaction(lastTransaction.ID)
 		assert.Nil(t, err)
 
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, transactions.Transactions, 1)
 

@@ -25,13 +25,13 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 	err = row.Scan(&transactionResponse.Count)
 	if err != nil {
 		tx.Rollback()
-		return transactionResponse, fmt.Errorf(errors_handler.UM001)
+		return transactionResponse, fmt.Errorf(errors_handler.DB004)
 	}
 
 	rows, err := tx.Query("SELECT * FROM transactions WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;", account_id, limit, offset)
 	if err != nil {
 		tx.Rollback()
-		return transactionResponse, fmt.Errorf(errors_handler.TR007)
+		return transactionResponse, fmt.Errorf(errors_handler.DB005)
 	}
 
 	for rows.Next() {
@@ -39,16 +39,20 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 		err = rows.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			tx.Rollback()
-			return transactionResponse, fmt.Errorf(errors_handler.TR009)
+			return transactionResponse, fmt.Errorf(errors_handler.DB006)
 		}
 		t.PersonName, _ = persons.GetPersonsName(t.PersonId)
 		transactionResponse.Transactions = append(transactionResponse.Transactions, t)
 	}
 
-	tx.Commit()
-
 	transactionResponse.Limit = limit
 	transactionResponse.Offset = offset
+
+	err = tx.Commit()
+	if err != nil {
+		return transactionResponse, fmt.Errorf(errors_handler.DB003)
+	}
+
 	return transactionResponse, nil
 }
 
@@ -92,7 +96,7 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	err = row.Scan(&tr.ID, &tr.AccountId, &tr.PersonId, &tr.Date, &tr.Amount, &tr.Description, &tr.Balance, &tr.CreatedAt, &tr.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
-		return tr, fmt.Errorf("Could not insert a new transaction into transaction table")
+		return tr, fmt.Errorf(errors_handler.DB007)
 	}
 
 	tx.Commit()
@@ -100,6 +104,17 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	tr.PersonName, _ = persons.GetPersonsName(tr.PersonId)
 
 	return tr, nil
+}
+
+func GetTransaction(transaction_id uuid.UUID) (Transaction, error) {
+	t := Transaction{}
+	row := database.DB.QueryRow("SELECT * FROM transactions WHERE id = $1;", transaction_id)
+	err := row.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		return t, fmt.Errorf(errors_handler.TR004)
+	}
+	t.PersonName, _ = persons.GetPersonsName(t.PersonId)
+	return t, nil
 }
 
 func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (Transaction, error) {
@@ -213,14 +228,14 @@ func GetTrashedTransactions() ([]TrashedTransaction, error) {
 	trashed := []TrashedTransaction{}
 	rows, err := database.DB.Query("SELECT * FROM trashed_transactions;")
 	if err != nil {
-		return trashed, fmt.Errorf(errors_handler.TR008)
+		return trashed, fmt.Errorf(errors_handler.DB005)
 	}
 
 	for rows.Next() {
 		tt := TrashedTransaction{}
 		err = rows.Scan(&tt.ID, &tt.AccountId, &tt.PersonId, &tt.Date, &tt.Amount, &tt.Description, &tt.CreatedAt, &tt.UpdatedAt, &tt.DeletedAt)
 		if err != nil {
-			return trashed, fmt.Errorf(errors_handler.TR010)
+			return trashed, fmt.Errorf(errors_handler.DB006)
 		}
 		tt.PersonName, _ = persons.GetPersonsName(tt.PersonId)
 		trashed = append(trashed, tt)

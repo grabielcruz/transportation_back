@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
+	"github.com/grabielcruz/transportation_back/modules/config"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
@@ -34,7 +35,7 @@ func TestTransactionsHandlers(t *testing.T) {
 	assert.Nil(t, err)
 
 	t.Run("Get a transaction response with zero transactions initially", func(t *testing.T) {
-		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)
+		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, config.Offset)
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		assert.Nil(t, err)
 
@@ -68,7 +69,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, fields.Amount, newTransaction.Amount)
 		assert.Equal(t, fields.Description, newTransaction.Description)
 
-		transations, err := GetTransactions(account.ID, Limit, Offset)
+		transations, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Len(t, transations.Transactions, 1)
 		assert.Equal(t, 1, transations.Count)
 	})
@@ -96,7 +97,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, fields.Amount, newTransaction.Amount)
 		assert.Equal(t, fields.Description, newTransaction.Description)
 
-		transations, err := GetTransactions(account.ID, Limit, Offset)
+		transations, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Len(t, transations.Transactions, 1)
 		assert.Equal(t, 1, transations.Count)
 	})
@@ -251,12 +252,12 @@ func TestTransactionsHandlers(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Create one transaction and get it", func(t *testing.T) {
+	t.Run("Create one transaction and get it in paginated response", func(t *testing.T) {
 		fields := GenerateTransactionFields(account.ID, person.ID)
 		newTransaction, err := CreateTransaction(fields)
 		assert.Nil(t, err)
 
-		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)
+		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, config.Offset)
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		assert.Nil(t, err)
 
@@ -268,8 +269,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
 		assert.Nil(t, err)
 		assert.Len(t, transactionsResponse.Transactions, 1)
-		assert.Equal(t, Offset, transactionsResponse.Offset)
-		assert.Equal(t, Limit, transactionsResponse.Limit)
+		assert.Equal(t, config.Offset, transactionsResponse.Offset)
+		assert.Equal(t, config.Limit, transactionsResponse.Limit)
 		assert.Equal(t, 1, transactionsResponse.Count)
 		assert.Equal(t, newTransaction.ID, transactionsResponse.Transactions[0].ID)
 		assert.Equal(t, newTransaction.Balance, transactionsResponse.Transactions[0].Balance)
@@ -279,6 +280,53 @@ func TestTransactionsHandlers(t *testing.T) {
 
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
+
+	t.Run("Create a transaction and get it with single response", func(t *testing.T) {
+		fields := GenerateTransactionFields(account.ID, person.ID)
+		newTransaction, err := CreateTransaction(fields)
+		assert.Nil(t, err)
+
+		url := fmt.Sprintf("/transaction/%v", newTransaction.ID.String())
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		transaction := Transaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &transaction)
+		assert.Nil(t, err)
+		assert.Equal(t, newTransaction.ID, transaction.ID)
+		assert.Equal(t, newTransaction.AccountId, transaction.AccountId)
+		assert.Equal(t, newTransaction.Amount, transaction.Amount)
+		assert.Equal(t, newTransaction.Balance, transaction.Balance)
+		assert.Equal(t, newTransaction.CreatedAt.UTC(), transaction.CreatedAt.UTC())
+		assert.Equal(t, newTransaction.UpdatedAt.UTC(), transaction.UpdatedAt.UTC())
+		assert.Equal(t, newTransaction.Date.UTC(), transaction.Date.UTC())
+		assert.Equal(t, newTransaction.Description, transaction.Description)
+		assert.Equal(t, newTransaction.PersonId, transaction.PersonId)
+		assert.Equal(t, newTransaction.PersonName, transaction.PersonName)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	deleteAllTransactions()
+
+	t.Run("Error when getting unexisting transaction", func(t *testing.T) {
+		url := fmt.Sprintf("/transaction/%v", (uuid.UUID{}).String())
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.TR004, errResponse.Error)
+		assert.Equal(t, "TR004", errResponse.Code)
+	})
 
 	t.Run("Generate 21 transactions and get them paginated", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(21)
@@ -295,7 +343,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
 
-		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, Offset)
+		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, config.Offset)
 		req, err := http.NewRequest(http.MethodGet, url, nil)
 		assert.Nil(t, err)
 
@@ -308,13 +356,13 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		// the first transaction should be the last executed one
 		assert.Equal(t, updatedAccount.Balance, transactionsResponse.Transactions[0].Balance)
-		assert.Len(t, transactionsResponse.Transactions, Limit)
+		assert.Len(t, transactionsResponse.Transactions, config.Limit)
 		assert.Equal(t, transactionsResponse.Count, 21)
-		assert.Equal(t, transactionsResponse.Limit, Limit)
-		assert.Equal(t, transactionsResponse.Offset, Offset)
+		assert.Equal(t, transactionsResponse.Limit, config.Limit)
+		assert.Equal(t, transactionsResponse.Offset, config.Offset)
 
 		// offset = 10
-		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, 10)
+		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, 10)
 		req, err = http.NewRequest(http.MethodGet, url, nil)
 		assert.Nil(t, err)
 
@@ -326,13 +374,13 @@ func TestTransactionsHandlers(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &transactionsResponse)
 		assert.Nil(t, err)
 
-		assert.Len(t, transactionsResponse.Transactions, Limit)
+		assert.Len(t, transactionsResponse.Transactions, config.Limit)
 		assert.Equal(t, transactionsResponse.Count, 21)
-		assert.Equal(t, transactionsResponse.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Limit, config.Limit)
 		assert.Equal(t, transactionsResponse.Offset, 10)
 
 		// offset = 20
-		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), Limit, 20)
+		url = fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, 20)
 		req, err = http.NewRequest(http.MethodGet, url, nil)
 		assert.Nil(t, err)
 
@@ -346,7 +394,7 @@ func TestTransactionsHandlers(t *testing.T) {
 
 		assert.Len(t, transactionsResponse.Transactions, 1)
 		assert.Equal(t, transactionsResponse.Count, 21)
-		assert.Equal(t, transactionsResponse.Limit, Limit)
+		assert.Equal(t, transactionsResponse.Limit, config.Limit)
 		assert.Equal(t, transactionsResponse.Offset, 20)
 	})
 
@@ -369,7 +417,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		updatedAccountFirst, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
 
-		transactionResponseFirst, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponseFirst, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		buf := bytes.Buffer{}
@@ -392,7 +440,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		updatedAccountSecond, err := money_accounts.GetOneMoneyAccount(account.ID)
 		assert.Nil(t, err)
 
-		transactionResponseSecond, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponseSecond, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		assert.Equal(t, updatedAccountSecond.Balance, transactionResponseSecond.Transactions[0].Balance)
@@ -422,7 +470,7 @@ func TestTransactionsHandlers(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponse, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		buf := bytes.Buffer{}
@@ -510,7 +558,7 @@ func TestTransactionsHandlers(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponse, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
@@ -553,7 +601,7 @@ func TestTransactionsHandlers(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponse, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		buf := bytes.Buffer{}
@@ -593,7 +641,7 @@ func TestTransactionsHandlers(t *testing.T) {
 			assert.Nil(t, err)
 		}
 
-		transactionResponse, err := GetTransactions(account.ID, Limit, Offset)
+		transactionResponse, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		buf := bytes.Buffer{}
@@ -643,7 +691,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		/////////////////
 
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 
 		assert.Len(t, transactions.Transactions, 1)
@@ -733,7 +781,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		///////////////////////////////
 
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, transactions.Transactions, 2)
 
@@ -889,7 +937,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		///////////////////////////
 
-		transactions, err := GetTransactions(account.ID, Limit, Offset)
+		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, transactions.Transactions, 1)
 

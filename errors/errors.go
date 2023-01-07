@@ -38,14 +38,6 @@ func MapServiceError(error_msg string) string {
 		return "TR005"
 	case TR006:
 		return "TR006"
-	case TR007:
-		return "TR007"
-	case TR008:
-		return "TR008"
-	case TR009:
-		return "TR009"
-	case TR010:
-		return "TR010"
 	case TR011:
 		return "TR011"
 	default:

@@ -37,6 +37,20 @@ func GetTransactionsHandler(w http.ResponseWriter, r *http.Request, ps httproute
 	common.SendJson(w, http.StatusOK, transactionResponse)
 }
 
+func GetTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	transaction_id, err := uuid.Parse(ps.ByName("transaction_id"))
+	if err != nil {
+		common.SendInvalidUUIDError(w, err.Error())
+		return
+	}
+	transaction, err := GetTransaction(transaction_id)
+	if err != nil {
+		common.SendServiceError(w, err.Error())
+		return
+	}
+	common.SendJson(w, http.StatusOK, transaction)
+}
+
 func CreateTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	transaction := Transaction{}
 	fields := TransactionFields{}
