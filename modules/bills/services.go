@@ -43,8 +43,22 @@ func CreatePendingBill(fields BillFields) (Bill, error) {
 
 // GetOneBill
 
-func GetClosedBills() {
+func GetOneBill(bill_id uuid.UUID) (Bill, error) {
+	b := Bill{}
+	row := database.DB.QueryRow("SELECT * FROM pending_bills WHERE id = $1;", bill_id)
+	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.Pending, &b.CreatedAt, &b.UpdatedAt)
 
+	// not found in pending_bills, look for it on closed bills
+	if err != nil {
+		row = database.DB.QueryRow("SELECT * FROM closed_bills WHERE id = $1;", bill_id)
+		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.Pending, &b.CreatedAt, &b.UpdatedAt)
+		// bill not found anywhere
+		if err != nil {
+			return b, fmt.Errorf(errors_handler.DB008)
+		}
+	}
+	b.PersonName, _ = persons.GetPersonsName(b.PersonId)
+	return b, nil
 }
 
 func getBills(table_name string, person_id uuid.UUID, to_pay bool, to_charge bool, limit int, offset int) (BillResponse, error) {
@@ -117,6 +131,31 @@ func getBills(table_name string, person_id uuid.UUID, to_pay bool, to_charge boo
 		return billResponse, fmt.Errorf(errors_handler.DB003)
 	}
 	return billResponse, nil
+}
+
+func createClosedBill(fields BillFields) (Bill, error) {
+	bill := Bill{}
+	if fields.Amount == float64(0) {
+		return bill, fmt.Errorf(errors_handler.BL002)
+	}
+	randomUUID, _ := uuid.NewRandom()
+	row := database.DB.QueryRow("INSERT INTO closed_bills (id, person_id, date, description, currency, amount, pending) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;", randomUUID, fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, 0)
+	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Currency, &bill.Amount, &bill.Pending, &bill.CreatedAt, &bill.UpdatedAt)
+	if err != nil {
+		// person with given uuid does not exists
+		if err.(*pq.Error).Message == "insert or update on table \"closed_bills\" violates foreign key constraint \"pending_bills_person_id_fkey\"" {
+			return bill, fmt.Errorf(errors_handler.BL003)
+		}
+		// currency not registered
+		if err.(*pq.Error).Message == "insert or update on table \"closed_bills\" violates foreign key constraint \"pending_bills_currency_fkey\"" {
+			return bill, fmt.Errorf(errors_handler.BL004)
+		}
+		return bill, fmt.Errorf(errors_handler.DB007)
+	}
+
+	bill.PersonName, _ = persons.GetPersonsName(bill.PersonId)
+
+	return bill, nil
 }
 
 func emptyBills() {

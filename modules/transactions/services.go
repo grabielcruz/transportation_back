@@ -111,7 +111,7 @@ func GetTransaction(transaction_id uuid.UUID) (Transaction, error) {
 	row := database.DB.QueryRow("SELECT * FROM transactions WHERE id = $1;", transaction_id)
 	err := row.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
-		return t, fmt.Errorf(errors_handler.TR004)
+		return t, fmt.Errorf(errors_handler.DB008)
 	}
 	t.PersonName, _ = persons.GetPersonsName(t.PersonId)
 	return t, nil

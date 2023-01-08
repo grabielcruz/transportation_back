@@ -124,10 +124,10 @@ func TestTransactionServices(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	resetTransactions()
 
-	t.Run("Error when getting non registered person", func(t *testing.T) {
+	t.Run("Error when getting non registered transaction", func(t *testing.T) {
 		_, err := GetTransaction(uuid.UUID{})
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR004, err.Error())
+		assert.Equal(t, errors_handler.DB008, err.Error())
 
 	})
 

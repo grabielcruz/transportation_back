@@ -412,4 +412,50 @@ func TestBillServices(t *testing.T) {
 
 	emptyBills()
 
+	t.Run("Create one bill and get it with single response", func(t *testing.T) {
+		billFields := GenerateBillFields(person1.ID)
+		newBill, err := CreatePendingBill(billFields)
+		assert.Nil(t, err)
+		bill, err := GetOneBill(newBill.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newBill.ID, bill.ID)
+		assert.Equal(t, newBill.PersonId, bill.PersonId)
+		assert.Equal(t, newBill.PersonName, bill.PersonName)
+		assert.Equal(t, newBill.Date, bill.Date)
+		assert.Equal(t, newBill.Description, bill.Description)
+		assert.Equal(t, newBill.Currency, bill.Currency)
+		assert.Equal(t, newBill.Amount, bill.Amount)
+		assert.Equal(t, newBill.Pending, bill.Pending)
+		assert.Equal(t, newBill.CreatedAt, bill.CreatedAt)
+		assert.Equal(t, newBill.UpdatedAt, bill.UpdatedAt)
+	})
+
+	emptyBills()
+
+	t.Run("Create closed bill artifitially and get it with single response", func(t *testing.T) {
+		billFields := GenerateBillFields(person1.ID)
+		newBill, err := createClosedBill(billFields)
+		assert.Nil(t, err)
+		bill, err := GetOneBill(newBill.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newBill.ID, bill.ID)
+		assert.Equal(t, newBill.PersonId, bill.PersonId)
+		assert.Equal(t, newBill.PersonName, bill.PersonName)
+		assert.Equal(t, newBill.Date, bill.Date)
+		assert.Equal(t, newBill.Description, bill.Description)
+		assert.Equal(t, newBill.Currency, bill.Currency)
+		assert.Equal(t, newBill.Amount, bill.Amount)
+		assert.Equal(t, newBill.Pending, bill.Pending)
+		assert.Equal(t, newBill.CreatedAt, bill.CreatedAt)
+		assert.Equal(t, newBill.UpdatedAt, bill.UpdatedAt)
+	})
+
+	t.Run("Error when requesting unexisting bill", func(t *testing.T) {
+		randomUUID, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = GetOneBill(randomUUID)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.DB008, err.Error())
+	})
+
 }

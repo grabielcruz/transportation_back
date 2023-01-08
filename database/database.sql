@@ -63,6 +63,9 @@ CREATE TABLE trashed_transactions (
   FOREIGN KEY (person_id) REFERENCES persons(id)
 );
 
+
+-- to pay: has amount negative
+-- to charge: has amount positive
 CREATE TABLE pending_bills (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
   person_id uuid NOT NULL,
@@ -78,8 +81,6 @@ CREATE TABLE pending_bills (
   FOREIGN KEY (currency) REFERENCES currencies(currency)
 );
 
--- to pay: has amount negative
--- to charge: has amount positive
 CREATE TABLE closed_bills (
   id uuid PRIMARY KEY,
   person_id uuid NOT NULL,
