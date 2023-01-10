@@ -12,7 +12,7 @@ import (
 
 func GetPersons() []Person {
 	persons := []Person{}
-	rows, err := database.DB.Query("SELECT * FROM persons;")
+	rows, err := database.DB.Query("SELECT * FROM persons WHERE id <> $1;", uuid.UUID{})
 	errors_handler.CheckError(err)
 	defer rows.Close()
 

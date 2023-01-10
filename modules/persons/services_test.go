@@ -18,9 +18,9 @@ func TestPersonService(t *testing.T) {
 	defer database.CloseConnection()
 
 	// zero person should be couned
-	t.Run("Get one person initially", func(t *testing.T) {
+	t.Run("Get zero persons initially", func(t *testing.T) {
 		persons := GetPersons()
-		assert.Len(t, persons, 1)
+		assert.Len(t, persons, 0)
 	})
 
 	t.Run("Create one person", func(t *testing.T) {

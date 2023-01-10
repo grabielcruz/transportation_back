@@ -38,7 +38,7 @@ func TestPersonsHandlers(t *testing.T) {
 		persons := []Person{}
 		err = json.Unmarshal(w.Body.Bytes(), &persons)
 		assert.Nil(t, err)
-		assert.Len(t, persons, 1)
+		assert.Len(t, persons, 0)
 	})
 
 	t.Run("Create one person", func(t *testing.T) {

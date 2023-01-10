@@ -458,4 +458,42 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, errors_handler.DB008, err.Error())
 	})
 
+	t.Run("Create one bill and update it", func(t *testing.T) {
+		bill, err := CreatePendingBill(GenerateBillFields(person1.ID))
+		assert.Nil(t, err)
+		updateFields := GenerateBillFields(person1.ID)
+		updatedBill, err := UpdatePendingBill(bill.ID, updateFields)
+		assert.Nil(t, err)
+
+		assert.Nil(t, err)
+		assert.Equal(t, updatedBill.PersonId, updateFields.PersonId)
+		assert.Equal(t, updatedBill.Date.Format("2006-01-02"), updateFields.Date.Format("2006-01-02"))
+		assert.Equal(t, updatedBill.Description, updateFields.Description)
+		// assert.Equal(t, updatedBill.Currency, updateFields.Currency) -> can't update currency
+		assert.Equal(t, updatedBill.Amount, updateFields.Amount)
+
+		bill2, err := GetOneBill(bill.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, updatedBill.ID, bill2.ID)
+		assert.Equal(t, updatedBill.PersonId, bill2.PersonId)
+		assert.Equal(t, updatedBill.PersonName, bill2.PersonName)
+		assert.Equal(t, updatedBill.Date, bill2.Date)
+		assert.Equal(t, updatedBill.Description, bill2.Description)
+		assert.Equal(t, updatedBill.Currency, bill2.Currency)
+		assert.Equal(t, updatedBill.Amount, bill2.Amount)
+		assert.Equal(t, updatedBill.Pending, bill2.Pending)
+		assert.Equal(t, updatedBill.CreatedAt, bill2.CreatedAt)
+		assert.Equal(t, updatedBill.UpdatedAt, bill2.UpdatedAt)
+	})
+
+	emptyBills()
+
+	t.Run("Error when updating unexisting bill", func(t *testing.T) {
+		randomUUID, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = UpdatePendingBill(randomUUID, GenerateBillFields(person1.ID))
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.DB001, err.Error())
+	})
+
 }

@@ -1,9 +1,10 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-DROP TABLE IF EXISTS trashed_transactions;
-DROP TABLE IF EXISTS transactions;
-DROP TABLE IF EXISTS money_accounts;
 DROP TABLE IF EXISTS pending_bills;
 DROP TABLE IF EXISTS closed_bills;
+DROP TABLE IF EXISTS bill_cross;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS trashed_transactions;
+DROP TABLE IF EXISTS money_accounts;
 DROP TABLE IF EXISTS persons;
 DROP TABLE IF EXISTS currencies;
 
@@ -33,6 +34,7 @@ CREATE TABLE persons (
 );
 
 -- used in transactions for records without a person
+-- zero person
 INSERT INTO persons (id, name, document) VALUES (uuid_nil(), '', '');
 
 CREATE TABLE transactions (
@@ -49,6 +51,14 @@ CREATE TABLE transactions (
   FOREIGN KEY (person_id) REFERENCES persons(id)
 );
 
+CREATE TABLE bill_cross (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  currency VARCHAR (3) NOT NULL,
+  balance NUMERIC(17,2) NOT NULL,
+  FOREIGN KEY (currency) REFERENCES currencies(currency)
+);
+
 CREATE TABLE trashed_transactions (
   id uuid PRIMARY KEY,
   account_id uuid NOT NULL,
@@ -63,7 +73,6 @@ CREATE TABLE trashed_transactions (
   FOREIGN KEY (person_id) REFERENCES persons(id)
 );
 
-
 -- to pay: has amount negative
 -- to charge: has amount positive
 CREATE TABLE pending_bills (
@@ -73,12 +82,16 @@ CREATE TABLE pending_bills (
   description VARCHAR NOT NULL,
   currency VARCHAR (3) NOT NULL,
   amount NUMERIC(17,2) NOT NULL CHECK (amount <> 0),
-  -- when pending is zero, the bill is considered to be paid
-  pending NUMERIC(17,2) NOT NULL CHECK (pending <> 0), 
+   -- both can be null
+  parent_transaction_id uuid,
+  parent_bill_cross_id uuid,
+  --
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (person_id) REFERENCES persons(id),
-  FOREIGN KEY (currency) REFERENCES currencies(currency)
+  FOREIGN KEY (currency) REFERENCES currencies(currency),
+  FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id),
+  FOREIGN KEY (parent_bill_cross_id) REFERENCES bill_cross(id)
 );
 
 CREATE TABLE closed_bills (
@@ -88,12 +101,20 @@ CREATE TABLE closed_bills (
   description VARCHAR NOT NULL,
   currency VARCHAR (3) NOT NULL,
   amount NUMERIC(17,2) NOT NULL CHECK (amount <> 0),
-  -- when pending is zero, the bill is considered to be paid
-  pending NUMERIC(17,2) NOT NULL CHECK (pending = 0), 
+   -- both can be null
+  parent_transaction_id uuid,
+  parent_bill_cross_id uuid,
+  --
+  -- one of these should be not null
+  transaction_id uuid,
+  bill_cross_id uuid,
+  --
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (person_id) REFERENCES persons(id),
-  FOREIGN KEY (currency) REFERENCES currencies(currency)
+  FOREIGN KEY (currency) REFERENCES currencies(currency),
+  FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id),
+  FOREIGN KEY (parent_bill_cross_id) REFERENCES bill_cross(id),
+  FOREIGN KEY (transaction_id) REFERENCES transactions(id),
+  FOREIGN KEY (bill_cross_id) REFERENCES bill_cross(id)
 );
-
-

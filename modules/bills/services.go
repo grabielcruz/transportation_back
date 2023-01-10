@@ -8,6 +8,7 @@ import (
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/persons"
+	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/lib/pq"
 )
 
@@ -41,8 +42,6 @@ func CreatePendingBill(fields BillFields) (Bill, error) {
 	return bill, nil
 }
 
-// GetOneBill
-
 func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 	b := Bill{}
 	row := database.DB.QueryRow("SELECT * FROM pending_bills WHERE id = $1;", bill_id)
@@ -56,6 +55,20 @@ func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 		if err != nil {
 			return b, fmt.Errorf(errors_handler.DB008)
 		}
+	}
+	b.PersonName, _ = persons.GetPersonsName(b.PersonId)
+	return b, nil
+}
+
+func UpdatePendingBill(bill_id uuid.UUID, fields BillFields) (Bill, error) {
+	b := Bill{}
+	row := database.DB.QueryRow("UPDATE pending_bills SET person_id = $1, date = $2, description = $3, amount = $4 WHERE id = $5 RETURNING *;", fields.PersonId, fields.Date, fields.Description, fields.Amount, bill_id)
+	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.Pending, &b.CreatedAt, &b.UpdatedAt)
+	if err != nil {
+		if errors_handler.CheckEmptyRowError(err) {
+			return b, err
+		}
+		return b, fmt.Errorf(errors_handler.DB009)
 	}
 	b.PersonName, _ = persons.GetPersonsName(b.PersonId)
 	return b, nil
@@ -161,4 +174,15 @@ func createClosedBill(fields BillFields) (Bill, error) {
 func emptyBills() {
 	database.DB.QueryRow("DELETE FROM pending_bills;")
 	database.DB.QueryRow("DELETE FROM closed_bills;")
+}
+
+func updatePendingOnPendingBill(bill_id uuid.UUID, amount float64, percentage float64) error {
+	new_pending := utility.RoundToTwoDecimalPlaces(amount * percentage)
+	updated_pending := float64(0)
+	row := database.DB.QueryRow("UPDATE pending_bills SET pending = $1 WHERE id = $2 RETURNING pending;", new_pending, bill_id)
+	err := row.Scan(&updated_pending)
+	if err != nil {
+		return err
+	}
+	return nil
 }

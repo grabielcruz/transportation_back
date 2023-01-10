@@ -9,6 +9,7 @@ const DB005 = "Could not get records"
 const DB006 = "Could not read record"
 const DB007 = "Could not insert record"
 const DB008 = "Record not found in database"
+const DB009 = "Could not update record"
 
 // Reading error
 const RE001 = "Unable to read body of the request"

@@ -28,7 +28,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 		return transactionResponse, fmt.Errorf(errors_handler.DB004)
 	}
 
-	rows, err := tx.Query("SELECT * FROM transactions WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;", account_id, limit, offset)
+	rows, err := tx.Query("SELECT * FROM transactions WHERE account_id = $1 AND id <> $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4;", account_id, uuid.UUID{}, limit, offset)
 	if err != nil {
 		tx.Rollback()
 		return transactionResponse, fmt.Errorf(errors_handler.DB005)
