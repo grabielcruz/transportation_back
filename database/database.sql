@@ -12,6 +12,7 @@ CREATE TABLE currencies (
   currency VARCHAR (3) PRIMARY KEY
 );
 
+-- zero currency is 000
 INSERT INTO currencies (currency) VALUES ('000'), ('VED'), ('USD');
 
 CREATE TABLE money_accounts (
