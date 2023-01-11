@@ -24,7 +24,7 @@ func sendJsonError(w http.ResponseWriter, httpCode int, errorCode string, msg st
 	json_data, err := json.Marshal(errorResponse)
 	if err != nil {
 		// should never happend
-		errors_handler.CheckError(err)
+		errors_handler.HandleError(err)
 	}
 	w.Write(json_data)
 	return

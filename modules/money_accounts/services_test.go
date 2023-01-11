@@ -57,8 +57,16 @@ func TestMoneyAccountServices(t *testing.T) {
 	DeleteAllMoneyAccounts()
 
 	t.Run("Error when getting unexisting account", func(t *testing.T) {
+		// with zero uuid
 		zeroUUID := uuid.UUID{}
 		_, err := GetOneMoneyAccount(zeroUUID)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.DB001, err.Error())
+
+		// with random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = GetOneMoneyAccount(randId)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
@@ -77,8 +85,15 @@ func TestMoneyAccountServices(t *testing.T) {
 	DeleteAllMoneyAccounts()
 
 	t.Run("Error when attempting to delete an unexisting account", func(t *testing.T) {
+		// with zero uuid
 		zeroUUID := uuid.UUID{}
 		_, err := DeleteOneMoneyAccount(zeroUUID)
+		assert.NotNil(t, err)
+
+		// with random uuid
+		randomUUID, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = DeleteOneMoneyAccount(randomUUID)
 		assert.NotNil(t, err)
 	})
 
@@ -99,9 +114,16 @@ func TestMoneyAccountServices(t *testing.T) {
 	DeleteAllMoneyAccounts()
 
 	t.Run("It should generate error when trying to update an unexisting account", func(t *testing.T) {
+		// with zero uuid
 		zeroUUID := uuid.UUID{}
 		zeroFields := MoneyAccountFields{}
 		_, err := UpdateMoneyAccount(zeroUUID, zeroFields)
+		assert.NotNil(t, err)
+
+		// with random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = UpdateMoneyAccount(randId, zeroFields)
 		assert.NotNil(t, err)
 	})
 
@@ -114,7 +136,16 @@ func TestMoneyAccountServices(t *testing.T) {
 	})
 
 	t.Run("Error when getting unexisting money accounts name", func(t *testing.T) {
+		// with zero uuid
 		name, err := getAccountsName(uuid.UUID{})
+		assert.Equal(t, "", name)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.DB001, err.Error())
+
+		// with random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		name, err = getAccountsName(randId)
 		assert.Equal(t, "", name)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
@@ -135,9 +166,17 @@ func TestMoneyAccountServices(t *testing.T) {
 	DeleteAllMoneyAccounts()
 
 	t.Run("Error when updating unexisting account's balance", func(t *testing.T) {
+		// with zero uuid
 		zeroID := uuid.UUID{}
 		newBalance := utility.GetRandomBalance()
 		_, err := setAccountsBalance(zeroID, newBalance)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.DB001, err.Error())
+
+		// with random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = setAccountsBalance(randId, newBalance)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
@@ -156,8 +195,16 @@ func TestMoneyAccountServices(t *testing.T) {
 	DeleteAllMoneyAccounts()
 
 	t.Run("Error when reseting unexisting account's balance", func(t *testing.T) {
+		// with zero uuid
 		zeroID := uuid.UUID{}
 		_, err := ResetAccountsBalance(zeroID)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.DB001, err.Error())
+
+		// with random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = ResetAccountsBalance(randId)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})

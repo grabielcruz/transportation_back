@@ -25,7 +25,7 @@ func TestTransactionServices(t *testing.T) {
 	person, err := persons.CreatePerson(persons.GeneratePersonFields())
 	assert.Nil(t, err)
 
-	t.Run("Get transaction response with zero transactions", func(t *testing.T) {
+	t.Run("Get transaction response with zero transactions initially", func(t *testing.T) {
 		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, transactions.Transactions, 0)
@@ -127,8 +127,7 @@ func TestTransactionServices(t *testing.T) {
 	t.Run("Error when getting non registered transaction", func(t *testing.T) {
 		_, err := GetTransaction(uuid.UUID{})
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.DB008, err.Error())
-
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Execute 100 transactions and get accounts balance right", func(t *testing.T) {
@@ -248,7 +247,7 @@ func TestTransactionServices(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Error when trying to update a transaction that is not the last", func(t *testing.T) {
+	t.Run("Error when trying to update a transaction that is not the last one", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(7)
 		for i, v := range amounts {
 			personId := person.ID
@@ -274,7 +273,7 @@ func TestTransactionServices(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Error when trying to update unexisting transaction with empty database", func(t *testing.T) {
+	t.Run("Error when trying to update unexisting transaction", func(t *testing.T) {
 		updateFields := GenerateTransactionFields(account.ID, person.ID)
 
 		_, err := UpdateLastTransaction(uuid.UUID{}, updateFields)

@@ -38,9 +38,10 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 		err = rows.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			tx.Rollback()
-			return transactionResponse, fmt.Errorf(errors_handler.DB006)
+			return transactionResponse, fmt.Errorf(errors_handler.DB005)
 		}
-		t.PersonName, _ = persons.GetPersonsName(t.PersonId)
+		t.PersonName, err = persons.GetPersonsName(t.PersonId)
+		errors_handler.HandleError(err)
 		transactionResponse.Transactions = append(transactionResponse.Transactions, t)
 	}
 
@@ -92,7 +93,7 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 
 	if newBalance != updatedBalance {
 		tx.Rollback()
-		return tr, fmt.Errorf("New balance and updated balance missmatch, oldBalance = %v, newBalance = %v, updatedBalance = %v", oldBalance, newBalance, updatedBalance)
+		return tr, fmt.Errorf(errors_handler.TR006, oldBalance, newBalance, updatedBalance)
 	}
 
 	row = tx.QueryRow(`INSERT INTO transactions (account_id, person_id, date, amount, description, balance) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`, fields.AccountId, fields.PersonId, fields.Date, fields.Amount, fields.Description, updatedBalance)
@@ -104,19 +105,24 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 
 	tx.Commit()
 
-	tr.PersonName, _ = persons.GetPersonsName(tr.PersonId)
+	tr.PersonName, err = persons.GetPersonsName(tr.PersonId)
+	errors_handler.HandleError(err)
 
 	return tr, nil
 }
 
 func GetTransaction(transaction_id uuid.UUID) (Transaction, error) {
 	t := Transaction{}
+	if transaction_id == (uuid.UUID{}) {
+		return t, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("SELECT * FROM transactions WHERE id = $1;", transaction_id)
 	err := row.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
-		return t, fmt.Errorf(errors_handler.DB008)
+		return t, fmt.Errorf(errors_handler.DB001)
 	}
-	t.PersonName, _ = persons.GetPersonsName(t.PersonId)
+	t.PersonName, err = persons.GetPersonsName(t.PersonId)
+	errors_handler.HandleError(err)
 	return t, nil
 }
 
@@ -159,7 +165,7 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 
 	if newBalance != updatedBalance {
 		tx.Rollback()
-		return udT, fmt.Errorf("New balance and updated balance missmatch, oldBalance = %v, newBalance = %v, updatedBalance = %v", oldT.Balance, newBalance, updatedBalance)
+		return udT, fmt.Errorf(errors_handler.TR006, oldT.Balance, newBalance, updatedBalance)
 	}
 
 	row = tx.QueryRow(`UPDATE transactions SET account_id = $1, person_id = $2, date = $3, amount = $4, description = $5, balance = $6, created_at = $7, updated_at = $8 WHERE id = $9 RETURNING *;`,
@@ -167,7 +173,7 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	err = row.Scan(&udT.ID, &udT.AccountId, &udT.PersonId, &udT.Date, &udT.Amount, &udT.Description, &udT.Balance, &udT.CreatedAt, &udT.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
-		return udT, fmt.Errorf("Could not update transaction with the id %v", transaction_id)
+		return udT, fmt.Errorf(errors_handler.DB009)
 	}
 
 	err = tx.Commit()
@@ -175,7 +181,8 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 		return udT, fmt.Errorf(errors_handler.DB003)
 	}
 
-	udT.PersonName, _ = persons.GetPersonsName(udT.PersonId)
+	udT.PersonName, err = persons.GetPersonsName(udT.PersonId)
+	errors_handler.HandleError(err)
 
 	return udT, nil
 }

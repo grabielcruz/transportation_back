@@ -324,8 +324,8 @@ func TestTransactionsHandlers(t *testing.T) {
 		errResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, errors_handler.DB008, errResponse.Error)
-		assert.Equal(t, "DB008", errResponse.Code)
+		assert.Equal(t, errors_handler.DB001, errResponse.Error)
+		assert.Equal(t, "DB001", errResponse.Code)
 	})
 
 	t.Run("Generate 21 transactions and get them paginated", func(t *testing.T) {
@@ -497,7 +497,7 @@ func TestTransactionsHandlers(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Error when trying to update unexisting transaction with empty database", func(t *testing.T) {
+	t.Run("Error when trying to update unexisting transaction", func(t *testing.T) {
 		buf := bytes.Buffer{}
 		updateFields := GenerateTransactionFields(account.ID, person.ID)
 		err := json.NewEncoder(&buf).Encode(updateFields)

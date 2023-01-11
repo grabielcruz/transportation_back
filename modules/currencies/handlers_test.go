@@ -227,4 +227,21 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Equal(t, "CU004", errResponse.Code)
 	})
 
+	t.Run("Error when deleting zero currency", func(t *testing.T) {
+		buf := bytes.Buffer{}
+		currency := "000"
+		req, err := http.NewRequest(http.MethodDelete, "/currencies/"+currency, &buf)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.CU002, errResponse.Error)
+		assert.Equal(t, "CU002", errResponse.Code)
+	})
+
 }

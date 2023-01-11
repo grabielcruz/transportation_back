@@ -13,16 +13,19 @@ import (
 func GetMoneyAccounts() []MoneyAccount {
 	var moneyAccounts []MoneyAccount
 	rows, err := database.DB.Query("SELECT * FROM money_accounts WHERE id <> $1;", uuid.UUID{})
-	errors_handler.CheckError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+		return moneyAccounts
+	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var ma MoneyAccount
 		err = rows.Scan(&ma.ID, &ma.Name, &ma.Balance, &ma.Details, &ma.Currency, &ma.CreatedAt, &ma.UpdatedAt)
-		errors_handler.CheckError(err)
+		errors_handler.HandleError(err)
 		moneyAccounts = append(moneyAccounts, ma)
 	}
-	errors_handler.CheckError(rows.Err())
+	errors_handler.HandleError(rows.Err())
 	return moneyAccounts
 }
 
@@ -33,7 +36,7 @@ func CreateMoneyAccount(fields MoneyAccountFields) (MoneyAccount, error) {
 		fields.Name, fields.Details, fields.Currency)
 	err := row.Scan(&nma.ID, &nma.Name, &nma.Balance, &nma.Details, &nma.Currency, &nma.CreatedAt, &nma.UpdatedAt)
 	if err != nil {
-		return nma, err
+		return nma, errors_handler.MapDBErrors(err)
 	}
 	return nma, nil
 }
@@ -46,10 +49,7 @@ func GetOneMoneyAccount(account_id uuid.UUID) (MoneyAccount, error) {
 	row := database.DB.QueryRow("SELECT * FROM money_accounts WHERE id = $1;", account_id)
 	err := row.Scan(&ma.ID, &ma.Name, &ma.Balance, &ma.Details, &ma.Currency, &ma.CreatedAt, &ma.UpdatedAt)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return ma, err
-		}
-		errors_handler.CheckError(err)
+		return ma, errors_handler.MapDBErrors(err)
 	}
 	return ma, nil
 }
@@ -63,10 +63,7 @@ func UpdateMoneyAccount(account_id uuid.UUID, fields MoneyAccountFields) (MoneyA
 		fields.Name, fields.Details, fields.Currency, time.Now(), account_id)
 	err := row.Scan(&uma.ID, &uma.Name, &uma.Balance, &uma.Details, &uma.Currency, &uma.CreatedAt, &uma.UpdatedAt)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return uma, err
-		}
-		errors_handler.CheckError(err)
+		return uma, errors_handler.MapDBErrors(err)
 	}
 	return uma, nil
 }
@@ -79,10 +76,7 @@ func getAccountsName(account_id uuid.UUID) (string, error) {
 	row := database.DB.QueryRow("SELECT name FROM money_accounts WHERE id = $1;", account_id)
 	err := row.Scan(&name)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return name, err
-		}
-		errors_handler.CheckError(err)
+		return name, errors_handler.MapDBErrors(err)
 	}
 	return name, nil
 }
@@ -95,10 +89,7 @@ func DeleteOneMoneyAccount(account_id uuid.UUID) (common.ID, error) {
 	row := database.DB.QueryRow("DELETE FROM money_accounts WHERE id = $1 RETURNING id;", account_id)
 	err := row.Scan(&id.ID)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return id, err
-		}
-		errors_handler.CheckError(err)
+		return id, errors_handler.MapDBErrors(err)
 	}
 	return id, nil
 }
@@ -119,10 +110,7 @@ func setAccountsBalance(account_id uuid.UUID, balance float64) (common.ID, error
 		balance, account_id)
 	err := row.Scan(&id.ID)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return id, err
-		}
-		errors_handler.CheckError(err)
+		return id, errors_handler.MapDBErrors(err)
 	}
 	return id, nil
 }

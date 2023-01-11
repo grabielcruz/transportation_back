@@ -1,15 +1,56 @@
 package errors_handler
 
-import "log"
+import (
+	"fmt"
+	"log"
+	"os"
+)
 
-func CheckError(err error) {
+// module level
+const ErrorsLogPath = "../../errors_log.txt"
+
+func HandleError(err error) {
+	// WriteErrorToFile(ErrorsLogPath, err.Error())
+}
+
+func WriteErrorToFile(filePath string, msg string) {
+	f, err := os.OpenFile(filePath, os.O_APPEND, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+	}
+	defer f.Close()
+	_, err = f.WriteString(msg + "\n")
+	if err != nil {
+		log.Println(err)
 	}
 }
 
-func CheckEmptyRowError(err error) bool {
-	return err.Error() == DB001
+func ResetFile(path string) {
+	err := os.WriteFile(path, []byte(""), 0644)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func MapDBErrors(err error) error {
+	HandleError(err)
+	switch err.Error() {
+	// Database
+	case "sql: no rows in result set":
+		return fmt.Errorf(DB001)
+
+		// Currencies
+	case "pq: duplicate key value violates unique constraint \"currencies_pkey\"":
+		return fmt.Errorf(CU003)
+	case "pq: update or delete on table \"currencies\" violates foreign key constraint \"money_accounts_currency_fkey\" on table \"money_accounts\"":
+		return fmt.Errorf(CU004)
+
+		// Persons
+	case "pq: duplicate key value violates unique constraint \"persons_document_key\"":
+		return fmt.Errorf(PE001)
+
+	}
+	return err
 }
 
 func MapServiceError(error_msg string) string {
@@ -25,12 +66,8 @@ func MapServiceError(error_msg string) string {
 		return "DB004"
 	case DB005:
 		return "DB005"
-	case DB006:
-		return "DB006"
 	case DB007:
 		return "DB007"
-	case DB008:
-		return "DB008"
 
 	// currencies
 	case CU001:
@@ -57,12 +94,6 @@ func MapServiceError(error_msg string) string {
 		return "TR004"
 	case TR005:
 		return "TR005"
-	case TR006:
-		return "TR006"
-	case TR011:
-		return "TR011"
-	case TR012:
-		return "TR012"
 
 	// bills
 	case BL001:

@@ -1,14 +1,13 @@
 package errors_handler
 
 // Database
-const DB001 = "sql: no rows in result set"
+// const DB001 = "sql: no rows in result set"
+const DB001 = "Record not found in database"
 const DB002 = "Could not begin transaction"
 const DB003 = "Could not commit transaction"
 const DB004 = "Could not count records"
 const DB005 = "Could not get records"
-const DB006 = "Could not read record"
 const DB007 = "Could not insert record"
-const DB008 = "Record not found in database"
 const DB009 = "Could not update record"
 
 // Reading error
@@ -49,9 +48,7 @@ const TR002 = "Transaction should not generate a negative balance"
 const TR003 = "The transaction requested is not the last transaction"
 const TR004 = "No transaction found in database"
 const TR005 = "Could not update account's balance"
-const TR006 = "Could not insert record into trashed transactions table"
-const TR011 = "Could not delete trashed transaction"
-const TR012 = "Could not create restored transaction"
+const TR006 = "New balance and updated balance missmatch, oldBalance = %v, newBalance = %v, updatedBalance = %v"
 
 // Bills
 const BL001 = "Could not request empty set of bills"

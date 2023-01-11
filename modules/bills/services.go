@@ -69,7 +69,7 @@ func GetPendingBills(person_id uuid.UUID, to_pay bool, to_charge bool, limit int
 		err = rows.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 		if err != nil {
 			tx.Rollback()
-			return billResponse, fmt.Errorf(errors_handler.DB006)
+			return billResponse, fmt.Errorf(errors_handler.DB005)
 		}
 		b.PersonName, _ = persons.GetPersonsName(person_id)
 		billResponse.Bills = append(billResponse.Bills, b)
@@ -117,7 +117,7 @@ func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
 		// bill not found anywhere
 		if err != nil {
-			return b, fmt.Errorf(errors_handler.DB008)
+			return b, fmt.Errorf(errors_handler.DB001)
 		}
 	}
 	b.PersonName, _ = persons.GetPersonsName(b.PersonId)
@@ -129,10 +129,7 @@ func UpdatePendingBill(bill_id uuid.UUID, fields BillFields) (Bill, error) {
 	row := database.DB.QueryRow("UPDATE pending_bills SET person_id = $1, date = $2, description = $3, currency = $4, amount = $5 WHERE id = $6 RETURNING *;", fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, bill_id)
 	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return b, err
-		}
-		return b, fmt.Errorf(errors_handler.DB009)
+		return b, errors_handler.MapDBErrors(err)
 	}
 	b.PersonName, _ = persons.GetPersonsName(b.PersonId)
 	return b, nil

@@ -103,6 +103,13 @@ func TestCurrenciesServices(t *testing.T) {
 		assert.Equal(t, errors_handler.CU004, err.Error())
 	})
 
+	t.Run("Error when deleting zero currency", func(t *testing.T) {
+		currency := "000"
+		_, err := DeleteCurrency(currency)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.CU002, err.Error())
+	})
+
 	resetCurrencies()
 	money_accounts.DeleteAllMoneyAccounts()
 }

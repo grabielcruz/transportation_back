@@ -13,16 +13,16 @@ import (
 func GetPersons() []Person {
 	persons := []Person{}
 	rows, err := database.DB.Query("SELECT * FROM persons WHERE id <> $1;", uuid.UUID{})
-	errors_handler.CheckError(err)
+	errors_handler.HandleError(err)
 	defer rows.Close()
 
 	for rows.Next() {
 		var p Person
 		err := rows.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
-		errors_handler.CheckError(err)
+		errors_handler.HandleError(err)
 		persons = append(persons, p)
 	}
-	errors_handler.CheckError(rows.Err())
+	errors_handler.HandleError(rows.Err())
 	return persons
 }
 
@@ -33,7 +33,7 @@ func CreatePerson(fields PersonFields) (Person, error) {
 		fields.Name, fields.Document)
 	err := row.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
-		return p, serviceErrorMapper(err)
+		return p, errors_handler.MapDBErrors(err)
 	}
 	return p, nil
 }
@@ -46,10 +46,7 @@ func GetOnePerson(person_id uuid.UUID) (Person, error) {
 	row := database.DB.QueryRow("SELECT * FROM persons WHERE id = $1;", person_id)
 	err := row.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return p, err
-		}
-		errors_handler.CheckError(err)
+		return p, errors_handler.MapDBErrors(err)
 	}
 	return p, nil
 }
@@ -63,10 +60,7 @@ func UpdatePerson(person_id uuid.UUID, fields PersonFields) (Person, error) {
 		fields.Name, fields.Document, time.Now(), person_id)
 	err := row.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return p, err
-		}
-		errors_handler.CheckError(err)
+		return p, errors_handler.MapDBErrors(err)
 	}
 	return p, nil
 }
@@ -79,10 +73,7 @@ func DeleteOnePerson(person_id uuid.UUID) (common.ID, error) {
 	row := database.DB.QueryRow("DELETE FROM persons WHERE id = $1 RETURNING id;", person_id)
 	err := row.Scan(&id.ID)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return id, err
-		}
-		errors_handler.CheckError(err)
+		return id, errors_handler.MapDBErrors(err)
 	}
 	return id, nil
 }
@@ -95,22 +86,11 @@ func GetPersonsName(person_id uuid.UUID) (string, error) {
 	row := database.DB.QueryRow("SELECT name FROM persons WHERE id = $1;", person_id)
 	err := row.Scan(&name)
 	if err != nil {
-		if errors_handler.CheckEmptyRowError(err) {
-			return name, err
-		}
-		errors_handler.CheckError(err)
+		return name, errors_handler.MapDBErrors(err)
 	}
 	return name, nil
 }
 
 func DeleteAllPersons() {
 	database.DB.QueryRow("DELETE FROM persons WHERE id <> $1;", uuid.UUID{})
-}
-
-func serviceErrorMapper(err error) error {
-	switch err.Error() {
-	case "pq: duplicate key value violates unique constraint \"persons_document_key\"":
-		return fmt.Errorf("Document already in use")
-	}
-	return err
 }

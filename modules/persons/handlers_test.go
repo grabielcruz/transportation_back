@@ -161,7 +161,8 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Equal(t, "UI001", errResponse.Code)
 	})
 
-	t.Run("Get error when sending uregistered id", func(t *testing.T) {
+	t.Run("Get error when sending uregistered id on get one person", func(t *testing.T) {
+		// zero uuid
 		wantedId := uuid.UUID{}
 		w := httptest.NewRecorder()
 		req, err := http.NewRequest(http.MethodGet, "/persons/"+wantedId.String(), nil)
@@ -175,6 +176,22 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, errors_handler.DB001, errResponse.Error)
 		assert.Equal(t, "DB001", errResponse.Code)
+
+		// random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		w2 := httptest.NewRecorder()
+		req2, err := http.NewRequest(http.MethodGet, "/persons/"+randId.String(), nil)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusBadRequest, w2.Code)
+
+		errResponse2 := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w2.Body.Bytes(), &errResponse2)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.DB001, errResponse2.Error)
+		assert.Equal(t, "DB001", errResponse2.Code)
 	})
 
 	t.Run("It should create and update one person", func(t *testing.T) {
@@ -201,7 +218,7 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Greater(t, updatedPerson.UpdatedAt, updatedPerson.CreatedAt)
 	})
 
-	t.Run("Error when sending bad id", func(t *testing.T) {
+	t.Run("Error when sending bad id on patch", func(t *testing.T) {
 		badId := utility.GetRandomString(10)
 		w := httptest.NewRecorder()
 		buf := bytes.Buffer{}
@@ -222,6 +239,7 @@ func TestPersonsHandlers(t *testing.T) {
 	})
 
 	t.Run("Error when sending unregistered id when patching", func(t *testing.T) {
+		// zero uuid
 		wantedId := uuid.UUID{}
 		buf := bytes.Buffer{}
 		updateFields := GeneratePersonFields()
@@ -239,6 +257,25 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, errors_handler.DB001, errResponse.Error)
 		assert.Equal(t, "DB001", errResponse.Code)
+
+		// random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		buf2 := bytes.Buffer{}
+		err = json.NewEncoder(&buf2).Encode(updateFields)
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		req2, err := http.NewRequest(http.MethodPatch, "/persons/"+randId.String(), &buf2)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusBadRequest, w2.Code)
+		errResponse2 := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w2.Body.Bytes(), &errResponse2)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.DB001, errResponse2.Error)
+		assert.Equal(t, "DB001", errResponse2.Code)
 	})
 
 	t.Run("Error when sending bad json on updating person", func(t *testing.T) {
@@ -328,6 +365,7 @@ func TestPersonsHandlers(t *testing.T) {
 	})
 
 	t.Run("It should send error when trying to delete unexisting person", func(t *testing.T) {
+		// with zero uuid
 		newId := uuid.UUID{}
 
 		w := httptest.NewRecorder()
@@ -344,6 +382,25 @@ func TestPersonsHandlers(t *testing.T) {
 		assert.NotNil(t, errResponse.Error)
 		assert.Equal(t, errors_handler.DB001, errResponse.Error)
 		assert.Equal(t, "DB001", errResponse.Code)
+
+		// with random uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+
+		w2 := httptest.NewRecorder()
+		req2, err := http.NewRequest(http.MethodDelete, "/persons/"+randId.String(), nil)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusBadRequest, w2.Code)
+
+		errResponse2 := errors_handler.ErrorResponse{}
+		body2 := w2.Body.Bytes()
+		err = json.Unmarshal(body2, &errResponse2)
+		assert.Nil(t, err)
+		assert.NotNil(t, errResponse2.Error)
+		assert.Equal(t, errors_handler.DB001, errResponse2.Error)
+		assert.Equal(t, "DB001", errResponse2.Code)
 	})
 
 	t.Run("Error when creating two person with the same document", func(t *testing.T) {

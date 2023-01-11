@@ -443,7 +443,7 @@ func TestBillServices(t *testing.T) {
 		assert.Nil(t, err)
 		_, err = GetOneBill(randomUUID)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.DB008, err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Create one bill and update it", func(t *testing.T) {
@@ -490,7 +490,7 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, id.ID, bill.ID)
 		_, err = GetOneBill(bill.ID)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.DB008, err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Error when requesting to delete unexisting pending bill", func(t *testing.T) {
