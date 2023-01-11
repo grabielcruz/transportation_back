@@ -40,6 +40,9 @@ const CU002 = "Currency code should be 3 upper case letters"
 const CU003 = "Currency already exists"
 const CU004 = "Currency is being used"
 
+// Foreign Key error
+const CU005 = "Currency it is not registered in database"
+
 // Transactions
 const TR001 = "Could not get balance from account"
 const TR002 = "Transaction should not generate a negative balance"
@@ -53,5 +56,6 @@ const TR012 = "Could not create restored transaction"
 // Bills
 const BL001 = "Could not request empty set of bills"
 const BL002 = "Can not create bill with amount of zero"
-const BL003 = "Person with the specified uuid does not exists"
-const BL004 = "Currency it is not registered in database"
+
+// const BL003 = "Person with the specified uuid does not exists"
+// const BL004 = "Currency it is not registered in database"

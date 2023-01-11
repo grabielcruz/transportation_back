@@ -9,7 +9,7 @@ import (
 
 func GetCurrencies() []string {
 	currencies := []string{}
-	rows, err := database.DB.Query("SELECT currency FROM currencies;")
+	rows, err := database.DB.Query("SELECT currency FROM currencies WHERE currency <> $1;", "000")
 	errors_handler.CheckError(err)
 	defer rows.Close()
 
@@ -55,7 +55,7 @@ func DeleteCurrency(currency string) (string, error) {
 }
 
 func resetCurrencies() {
-	database.DB.QueryRow("DELETE FROM currencies;")
+	database.DB.QueryRow("DELETE FROM currencies WHERE currency <> $1;", "000")
 	database.DB.QueryRow("INSERT INTO currencies (currency) VALUES ('VED'), ('USD');")
 }
 

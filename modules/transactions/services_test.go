@@ -45,7 +45,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Create one transaction with a person", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID, person.ID)
@@ -60,7 +60,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Error when creating transaction with unexisting account", func(t *testing.T) {
 		zeroId := uuid.UUID{}
@@ -71,7 +71,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Error when generating negative balance", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID, person.ID)
@@ -86,7 +86,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Create one transaction and get it in paginated response", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID, person.ID)
@@ -101,7 +101,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Create one transaction and get it with single response", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID, person.ID)
@@ -122,7 +122,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Error when getting non registered transaction", func(t *testing.T) {
 		_, err := GetTransaction(uuid.UUID{})
@@ -150,7 +150,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Execute 10 transaction and the first transaction in the slice should be the last on execution", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(10)
@@ -172,7 +172,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Execute 51 transaction and get in last page the initial transaction, and count equal 51", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(51)
@@ -193,7 +193,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Create 7 transactions, update the last one and check sequence", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(7)
@@ -246,7 +246,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Error when trying to update a transaction that is not the last", func(t *testing.T) {
 		amounts := utility.GetSliceOfAmounts(7)
@@ -272,7 +272,7 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Error when trying to update unexisting transaction with empty database", func(t *testing.T) {
 		updateFields := GenerateTransactionFields(account.ID, person.ID)
@@ -308,173 +308,12 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
-
-	t.Run("Should create two transactions, delete the last one and get it from trashed transactions", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(2)
-		for _, v := range amounts {
-			personId := person.ID
-			transactionFields := GenerateTransactionFields(account.ID, personId)
-			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields)
-			assert.Nil(t, err)
-		}
-
-		deletedTransaction, err := DeleteLastTransaction()
-		assert.Nil(t, err)
-
-		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
-		assert.Nil(t, err)
-
-		assert.Len(t, transactions.Transactions, 1)
-
-		trashedTransactions, err := GetTrashedTransactions()
-		assert.Nil(t, err)
-		assert.Len(t, trashedTransactions, 1)
-
-		assert.Equal(t, deletedTransaction.ID, trashedTransactions[0].ID)
-		assert.Equal(t, deletedTransaction.AccountId, trashedTransactions[0].AccountId)
-		assert.Equal(t, deletedTransaction.PersonId, trashedTransactions[0].PersonId)
-		assert.Equal(t, deletedTransaction.Amount, trashedTransactions[0].Amount)
-		assert.Equal(t, deletedTransaction.Date, trashedTransactions[0].Date)
-		assert.Equal(t, deletedTransaction.Description, trashedTransactions[0].Description)
-		assert.Equal(t, deletedTransaction.CreatedAt, trashedTransactions[0].CreatedAt)
-		assert.Equal(t, deletedTransaction.UpdatedAt, trashedTransactions[0].UpdatedAt)
-		assert.Equal(t, deletedTransaction.DeletedAt, trashedTransactions[0].DeletedAt)
-		assert.Greater(t, trashedTransactions[0].DeletedAt, trashedTransactions[0].CreatedAt)
-
-		// it should update account's balance, not a problem if the last transaction is deleted
-		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
-		assert.Nil(t, err)
-		assert.Equal(t, updatedAccount.Balance, transactions.Transactions[0].Balance)
-	})
-
-	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
+	deleteAllTransactions()
 
 	t.Run("Error when deleting last transaction with no transactions", func(t *testing.T) {
 		_, err := DeleteLastTransaction()
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR004, err.Error())
-	})
-
-	t.Run("Should create two transactions, delete the last one and restore it", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(2)
-		for _, v := range amounts {
-			personId := person.ID
-			transactionFields := GenerateTransactionFields(account.ID, personId)
-			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields)
-			assert.Nil(t, err)
-		}
-
-		deletedTransaction, err := DeleteLastTransaction()
-		assert.Nil(t, err)
-
-		restoredTransaction, err := RestoreTrashedTransaction(deletedTransaction.ID)
-		assert.Nil(t, err)
-
-		trashedTransactions, err := GetTrashedTransactions()
-		assert.Nil(t, err)
-		assert.Len(t, trashedTransactions, 0)
-
-		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
-		assert.Nil(t, err)
-		assert.Len(t, transactions.Transactions, 2)
-
-		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
-		assert.Nil(t, err)
-		assert.Equal(t, updatedAccount.Balance, transactions.Transactions[0].Balance)
-
-		assert.Equal(t, deletedTransaction.ID, restoredTransaction.ID)
-		assert.Equal(t, deletedTransaction.AccountId, restoredTransaction.AccountId)
-		assert.Equal(t, deletedTransaction.PersonId, restoredTransaction.PersonId)
-		assert.Equal(t, deletedTransaction.Amount, restoredTransaction.Amount)
-		assert.Equal(t, deletedTransaction.Date, restoredTransaction.Date)
-		assert.Equal(t, deletedTransaction.Description, restoredTransaction.Description)
-		assert.Less(t, deletedTransaction.DeletedAt, restoredTransaction.CreatedAt)
-	})
-
-	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
-
-	t.Run("Error when restoring unexisting transaction", func(t *testing.T) {
-		_, err := RestoreTrashedTransaction(uuid.UUID{})
-		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR011, err.Error())
-	})
-
-	t.Run("Error when restoring transaction that generates negative balance", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID, person.ID)
-		transactionFields.Amount = float64(100)
-		_, err := CreateTransaction(transactionFields)
-		assert.Nil(t, err)
-
-		transactionFields2 := GenerateTransactionFields(account.ID, person.ID)
-		transactionFields2.Amount = float64(-100)
-		_, err = CreateTransaction(transactionFields2)
-		assert.Nil(t, err)
-
-		deletedTransaction, err := DeleteLastTransaction()
-		assert.Nil(t, err)
-
-		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
-		assert.Nil(t, err)
-
-		transactionFields3 := GenerateTransactionFields(account.ID, uuid.UUID{})
-		transactionFields3.Amount = updatedAccount.Balance * -1 // generates zero balance on account
-
-		_, err = CreateTransaction(transactionFields3)
-		assert.Nil(t, err)
-
-		_, err = RestoreTrashedTransaction(deletedTransaction.ID)
-		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR002, err.Error())
-	})
-
-	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
-
-	t.Run("Should create two transactions, delete the last one and then delete it permanently", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(2)
-		for _, v := range amounts {
-			personId := person.ID
-			transactionFields := GenerateTransactionFields(account.ID, personId)
-			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields)
-			assert.Nil(t, err)
-		}
-
-		lastTransaction, err := DeleteLastTransaction()
-		assert.Nil(t, err)
-
-		permanently_deleted, err := DeleteTrashedTransaction(lastTransaction.ID)
-		assert.Nil(t, err)
-
-		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
-		assert.Nil(t, err)
-		assert.Len(t, transactions.Transactions, 1)
-
-		trashedTransactions, err := GetTrashedTransactions()
-		assert.Nil(t, err)
-		assert.Len(t, trashedTransactions, 0)
-
-		assert.Equal(t, lastTransaction.ID, permanently_deleted.ID)
-		assert.Equal(t, lastTransaction.AccountId, permanently_deleted.AccountId)
-		assert.Equal(t, lastTransaction.PersonId, permanently_deleted.PersonId)
-		assert.Equal(t, lastTransaction.Amount, permanently_deleted.Amount)
-		assert.Equal(t, lastTransaction.Date, permanently_deleted.Date)
-		assert.Equal(t, lastTransaction.Description, permanently_deleted.Description)
-		assert.Equal(t, lastTransaction.DeletedAt, permanently_deleted.DeletedAt)
-	})
-
-	money_accounts.ResetAccountsBalance(account.ID)
-	resetTransactions()
-
-	t.Run("Error when deleting unexisting trashed transaction", func(t *testing.T) {
-		_, err := DeleteTrashedTransaction(uuid.UUID{})
-		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR011, err.Error())
 	})
 
 	// at the end of all transactions services tests

@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
-	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
 )
@@ -58,6 +57,10 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 
 func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	tr := Transaction{}
+
+	if fields.AccountId == (uuid.UUID{}) {
+		return tr, fmt.Errorf(errors_handler.TR001)
+	}
 
 	var oldBalance float64 = 0
 	var updatedBalance float64 = 0
@@ -177,144 +180,45 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	return udT, nil
 }
 
-func DeleteLastTransaction() (TrashedTransaction, error) {
-	dT := TrashedTransaction{} // deleted transaction
-	lT := Transaction{}        // last transaction
+func DeleteLastTransaction() (Transaction, error) {
+	lT := Transaction{} // last transaction
 	updatedBalance := float64(0)
 
 	tx, err := database.DB.Begin()
 	if err != nil {
 		tx.Rollback()
-		return dT, fmt.Errorf(errors_handler.DB002)
+		return lT, fmt.Errorf(errors_handler.DB002)
 	}
 
 	row := tx.QueryRow("DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY created_at DESC LIMIT 1) RETURNING *;")
 	err = row.Scan(&lT.ID, &lT.AccountId, &lT.PersonId, &lT.Date, &lT.Amount, &lT.Description, &lT.Balance, &lT.CreatedAt, &lT.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
-		return dT, fmt.Errorf(errors_handler.TR004)
-	}
-
-	row = tx.QueryRow("INSERT INTO trashed_transactions VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;", lT.ID, lT.AccountId, lT.PersonId, lT.Date, lT.Amount, lT.Description, lT.CreatedAt, lT.UpdatedAt, time.Now())
-	err = row.Scan(&dT.ID, &dT.AccountId, &dT.PersonId, &dT.Date, &dT.Amount, &dT.Description, &dT.CreatedAt, &dT.UpdatedAt, &dT.DeletedAt)
-	if err != nil {
-		tx.Rollback()
-		return dT, fmt.Errorf(errors_handler.TR006)
+		return lT, fmt.Errorf(errors_handler.TR004)
 	}
 
 	newBalance := utility.RoundToTwoDecimalPlaces(lT.Balance - lT.Amount)
 	// This should never happend
 	if newBalance < 0 {
 		tx.Rollback()
-		return dT, fmt.Errorf(errors_handler.TR002)
+		return lT, fmt.Errorf(errors_handler.TR002)
 	}
 
 	row = tx.QueryRow(`UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING balance;`, newBalance, lT.AccountId)
 	err = row.Scan(&updatedBalance)
 	if err != nil {
 		tx.Rollback()
-		return dT, fmt.Errorf(errors_handler.TR005)
+		return lT, fmt.Errorf(errors_handler.TR005)
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return dT, fmt.Errorf(errors_handler.DB003)
+		return lT, fmt.Errorf(errors_handler.DB003)
 	}
 
-	return dT, nil
-}
-
-func GetTrashedTransactions() ([]TrashedTransaction, error) {
-	trashed := []TrashedTransaction{}
-	rows, err := database.DB.Query("SELECT * FROM trashed_transactions;")
-	if err != nil {
-		return trashed, fmt.Errorf(errors_handler.DB005)
-	}
-
-	for rows.Next() {
-		tt := TrashedTransaction{}
-		err = rows.Scan(&tt.ID, &tt.AccountId, &tt.PersonId, &tt.Date, &tt.Amount, &tt.Description, &tt.CreatedAt, &tt.UpdatedAt, &tt.DeletedAt)
-		if err != nil {
-			return trashed, fmt.Errorf(errors_handler.DB006)
-		}
-		tt.PersonName, _ = persons.GetPersonsName(tt.PersonId)
-		trashed = append(trashed, tt)
-	}
-
-	return trashed, nil
-}
-
-func RestoreTrashedTransaction(trashed_transaction_id uuid.UUID) (Transaction, error) {
-	rt := Transaction{}        // restored transaction
-	dT := TrashedTransaction{} // deleted transaction
-	updatedBalance := float64(0)
-
-	tx, err := database.DB.Begin()
-	if err != nil {
-		tx.Rollback()
-		return rt, fmt.Errorf(errors_handler.DB002)
-	}
-
-	row := tx.QueryRow("DELETE FROM trashed_transactions WHERE id = $1 RETURNING *;", trashed_transaction_id)
-	err = row.Scan(&dT.ID, &dT.AccountId, &dT.PersonId, &dT.Date, &dT.Amount, &dT.Description, &dT.CreatedAt, &dT.UpdatedAt, &dT.DeletedAt)
-	if err != nil {
-		tx.Rollback()
-		return rt, fmt.Errorf(errors_handler.TR011)
-	}
-
-	moneyAccount, err := money_accounts.GetOneMoneyAccount(dT.AccountId)
-	if err != nil {
-		tx.Rollback()
-		return rt, err
-	}
-
-	newBalance := utility.RoundToTwoDecimalPlaces(moneyAccount.Balance + dT.Amount)
-	if newBalance < 0 {
-		tx.Rollback()
-		return rt, fmt.Errorf(errors_handler.TR002)
-	}
-
-	row = tx.QueryRow("INSERT INTO transactions (id, account_id, person_id, date, amount, description, balance) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", dT.ID, dT.AccountId, dT.PersonId, dT.Date, dT.Amount, dT.Description, newBalance)
-	err = row.Scan(&rt.ID, &rt.AccountId, &rt.PersonId, &rt.Date, &rt.Amount, &rt.Description, &rt.Balance, &rt.CreatedAt, &rt.UpdatedAt)
-	if err != nil {
-		tx.Rollback()
-		return rt, fmt.Errorf(errors_handler.TR012)
-	}
-
-	row = tx.QueryRow("UPDATE money_accounts SET balance = $1 WHERE id = $2 RETURNING balance;", newBalance, rt.AccountId)
-	err = row.Scan(&updatedBalance)
-	if err != nil {
-		tx.Rollback()
-		return rt, fmt.Errorf(errors_handler.TR005)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return rt, fmt.Errorf(errors_handler.DB003)
-	}
-
-	return rt, nil
-}
-
-func DeleteTrashedTransaction(trashed_transaction_id uuid.UUID) (TrashedTransaction, error) {
-	tt := TrashedTransaction{} // trashed_transaction
-	row := database.DB.QueryRow("DELETE FROM trashed_transactions WHERE id = $1 RETURNING *;", trashed_transaction_id)
-	err := row.Scan(&tt.ID, &tt.AccountId, &tt.PersonId, &tt.Date, &tt.Amount, &tt.Description, &tt.CreatedAt, &tt.UpdatedAt, &tt.DeletedAt)
-	if err != nil {
-		return tt, fmt.Errorf(errors_handler.TR011)
-	}
-	return tt, nil
+	return lT, nil
 }
 
 func deleteAllTransactions() {
 	database.DB.QueryRow("DELETE FROM transactions;")
-}
-
-func deleteAllTrashedTransactions() {
-	database.DB.QueryRow("DELETE FROM trashed_transactions;")
-}
-
-func resetTransactions() {
-	deleteAllTransactions()
-	deleteAllTrashedTransactions()
 }

@@ -69,10 +69,6 @@ func MapServiceError(error_msg string) string {
 		return "BL001"
 	case BL002:
 		return "BL002"
-	case BL003:
-		return "BL003"
-	case BL004:
-		return "BL004"
 
 	//default
 	default:

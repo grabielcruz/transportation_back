@@ -40,6 +40,9 @@ func CreatePerson(fields PersonFields) (Person, error) {
 
 func GetOnePerson(person_id uuid.UUID) (Person, error) {
 	p := Person{}
+	if person_id == (uuid.UUID{}) {
+		return p, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("SELECT * FROM persons WHERE id = $1;", person_id)
 	err := row.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
@@ -53,6 +56,9 @@ func GetOnePerson(person_id uuid.UUID) (Person, error) {
 
 func UpdatePerson(person_id uuid.UUID, fields PersonFields) (Person, error) {
 	p := Person{}
+	if person_id == (uuid.UUID{}) {
+		return p, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("UPDATE persons SET name = $1, document = $2, updated_at = $3 WHERE id = $4 RETURNING *;",
 		fields.Name, fields.Document, time.Now(), person_id)
 	err := row.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
@@ -67,6 +73,9 @@ func UpdatePerson(person_id uuid.UUID, fields PersonFields) (Person, error) {
 
 func DeleteOnePerson(person_id uuid.UUID) (common.ID, error) {
 	id := common.ID{}
+	if person_id == (uuid.UUID{}) {
+		return id, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("DELETE FROM persons WHERE id = $1 RETURNING id;", person_id)
 	err := row.Scan(&id.ID)
 	if err != nil {
@@ -80,6 +89,9 @@ func DeleteOnePerson(person_id uuid.UUID) (common.ID, error) {
 
 func GetPersonsName(person_id uuid.UUID) (string, error) {
 	var name string = ""
+	if person_id == (uuid.UUID{}) {
+		return name, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("SELECT name FROM persons WHERE id = $1;", person_id)
 	err := row.Scan(&name)
 	if err != nil {
@@ -92,7 +104,7 @@ func GetPersonsName(person_id uuid.UUID) (string, error) {
 }
 
 func DeleteAllPersons() {
-	database.DB.QueryRow("DELETE FROM persons;")
+	database.DB.QueryRow("DELETE FROM persons WHERE id <> $1;", uuid.UUID{})
 }
 
 func serviceErrorMapper(err error) error {
