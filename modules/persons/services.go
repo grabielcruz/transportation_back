@@ -13,16 +13,22 @@ import (
 func GetPersons() []Person {
 	persons := []Person{}
 	rows, err := database.DB.Query("SELECT * FROM persons WHERE id <> $1;", uuid.UUID{})
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var p Person
 		err := rows.Scan(&p.ID, &p.Name, &p.Document, &p.CreatedAt, &p.UpdatedAt)
-		errors_handler.HandleError(err)
+		if err != nil {
+			errors_handler.HandleError(err)
+		}
 		persons = append(persons, p)
 	}
-	errors_handler.HandleError(rows.Err())
+	if err != nil {
+		errors_handler.HandleError(rows.Err())
+	}
 	return persons
 }
 

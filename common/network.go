@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
@@ -24,7 +25,7 @@ func sendJsonError(w http.ResponseWriter, httpCode int, errorCode string, msg st
 	json_data, err := json.Marshal(errorResponse)
 	if err != nil {
 		// should never happend
-		errors_handler.HandleError(err)
+		log.Fatal(err)
 	}
 	w.Write(json_data)
 	return

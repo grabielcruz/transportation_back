@@ -41,7 +41,9 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 			return transactionResponse, fmt.Errorf(errors_handler.DB005)
 		}
 		t.PersonName, err = persons.GetPersonsName(t.PersonId)
-		errors_handler.HandleError(err)
+		if err != nil {
+			errors_handler.HandleError(err)
+		}
 		transactionResponse.Transactions = append(transactionResponse.Transactions, t)
 	}
 
@@ -106,7 +108,9 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	tx.Commit()
 
 	tr.PersonName, err = persons.GetPersonsName(tr.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 
 	return tr, nil
 }
@@ -122,7 +126,9 @@ func GetTransaction(transaction_id uuid.UUID) (Transaction, error) {
 		return t, fmt.Errorf(errors_handler.DB001)
 	}
 	t.PersonName, err = persons.GetPersonsName(t.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 	return t, nil
 }
 
@@ -182,7 +188,9 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	}
 
 	udT.PersonName, err = persons.GetPersonsName(udT.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 
 	return udT, nil
 }

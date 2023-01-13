@@ -10,16 +10,22 @@ import (
 func GetCurrencies() []string {
 	currencies := []string{}
 	rows, err := database.DB.Query("SELECT currency FROM currencies WHERE currency <> $1;", "000")
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var currency string
 		err = rows.Scan(&currency)
-		errors_handler.HandleError(err)
+		if err != nil {
+			errors_handler.HandleError(err)
+		}
 		currencies = append(currencies, currency)
 	}
-	errors_handler.HandleError(rows.Err())
+	if err != nil {
+		errors_handler.HandleError(rows.Err())
+	}
 	return currencies
 }
 

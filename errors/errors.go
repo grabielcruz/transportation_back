@@ -10,30 +10,29 @@ import (
 const ErrorsLogPath = "../../errors_log.txt"
 
 func HandleError(err error) {
-	// WriteErrorToFile(ErrorsLogPath, err.Error())
+	WriteErrorToFile(ErrorsLogPath, err.Error())
 }
 
 func WriteErrorToFile(filePath string, msg string) {
 	f, err := os.OpenFile(filePath, os.O_APPEND, 0644)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	defer f.Close()
 	_, err = f.WriteString(msg + "\n")
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 }
 
 func ResetFile(path string) {
 	err := os.WriteFile(path, []byte(""), 0644)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 }
 
 func MapDBErrors(err error) error {
-	HandleError(err)
 	switch err.Error() {
 	// Database
 	case "sql: no rows in result set":

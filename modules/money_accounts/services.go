@@ -22,10 +22,14 @@ func GetMoneyAccounts() []MoneyAccount {
 	for rows.Next() {
 		var ma MoneyAccount
 		err = rows.Scan(&ma.ID, &ma.Name, &ma.Balance, &ma.Details, &ma.Currency, &ma.CreatedAt, &ma.UpdatedAt)
-		errors_handler.HandleError(err)
+		if err != nil {
+			errors_handler.HandleError(err)
+		}
 		moneyAccounts = append(moneyAccounts, ma)
 	}
-	errors_handler.HandleError(rows.Err())
+	if err != nil {
+		errors_handler.HandleError(rows.Err())
+	}
 	return moneyAccounts
 }
 

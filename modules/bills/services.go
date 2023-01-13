@@ -72,7 +72,9 @@ func GetPendingBills(person_id uuid.UUID, to_pay bool, to_charge bool, limit int
 			return billResponse, fmt.Errorf(errors_handler.DB005)
 		}
 		b.PersonName, err = persons.GetPersonsName(person_id)
-		errors_handler.HandleError(err)
+		if err != nil {
+			errors_handler.HandleError(err)
+		}
 		billResponse.Bills = append(billResponse.Bills, b)
 	}
 
@@ -99,7 +101,9 @@ func CreatePendingBill(fields BillFields) (Bill, error) {
 	}
 
 	bill.PersonName, err = persons.GetPersonsName(bill.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 
 	return bill, nil
 }
@@ -119,7 +123,9 @@ func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 		}
 	}
 	b.PersonName, err = persons.GetPersonsName(b.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 	return b, nil
 }
 
@@ -134,7 +140,9 @@ func UpdatePendingBill(bill_id uuid.UUID, fields BillFields) (Bill, error) {
 		return b, errors_handler.MapDBErrors(err)
 	}
 	b.PersonName, err = persons.GetPersonsName(b.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 	return b, nil
 }
 
@@ -161,7 +169,9 @@ func createClosedBill(fields BillFields) (Bill, error) {
 	}
 
 	bill.PersonName, err = persons.GetPersonsName(bill.PersonId)
-	errors_handler.HandleError(err)
+	if err != nil {
+		errors_handler.HandleError(err)
+	}
 
 	return bill, nil
 }

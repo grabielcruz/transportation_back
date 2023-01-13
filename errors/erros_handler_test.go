@@ -37,4 +37,5 @@ func TestHandleError(t *testing.T) {
 		assert.Equal(t, read_errors[i], errors[i])
 	}
 
+	ResetFile(TestPath)
 }
