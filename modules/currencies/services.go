@@ -25,7 +25,7 @@ func GetCurrencies() []string {
 
 func CreateCurrency(newCurrency string) (string, error) {
 	createdCurrency := ""
-	err := checkValidCurrency(newCurrency)
+	err := CheckValidCurrency(newCurrency)
 	if err != nil {
 		return createdCurrency, err
 	}
@@ -39,7 +39,7 @@ func CreateCurrency(newCurrency string) (string, error) {
 
 func DeleteCurrency(currency string) (string, error) {
 	deletedCurrency := ""
-	err := checkValidCurrency(currency)
+	err := CheckValidCurrency(currency)
 	if err != nil {
 		return deletedCurrency, err
 	}

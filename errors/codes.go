@@ -32,6 +32,7 @@ const QS001 = "Query string error"
 
 // Persons
 const PE001 = "Document already in use"
+const PE002 = "Person does not exists"
 
 // Currencies
 const CU001 = "Could not delete VED or USD currency"

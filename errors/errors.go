@@ -39,15 +39,21 @@ func MapDBErrors(err error) error {
 	case "sql: no rows in result set":
 		return fmt.Errorf(DB001)
 
-		// Currencies
+	// Currencies
 	case "pq: duplicate key value violates unique constraint \"currencies_pkey\"":
 		return fmt.Errorf(CU003)
 	case "pq: update or delete on table \"currencies\" violates foreign key constraint \"money_accounts_currency_fkey\" on table \"money_accounts\"":
 		return fmt.Errorf(CU004)
 
-		// Persons
+	// Persons
 	case "pq: duplicate key value violates unique constraint \"persons_document_key\"":
 		return fmt.Errorf(PE001)
+
+	// Bills
+	case "pq: insert or update on table \"pending_bills\" violates foreign key constraint \"pending_bills_currency_fkey\"":
+		return fmt.Errorf(CU005)
+	case "pq: insert or update on table \"closed_bills\" violates foreign key constraint \"pending_bills_currency_fkey\"":
+		return fmt.Errorf(CU005)
 
 	}
 	return err
@@ -82,6 +88,8 @@ func MapServiceError(error_msg string) string {
 	// persons
 	case PE001:
 		return "PE001"
+	case PE002:
+		return "PE002"
 
 	// transactions
 	case TR001:

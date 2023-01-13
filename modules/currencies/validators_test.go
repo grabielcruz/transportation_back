@@ -9,30 +9,30 @@ import (
 
 func TestCheckValidCurrency(t *testing.T) {
 	goodCurrency := "ABC"
-	err := checkValidCurrency(goodCurrency)
+	err := CheckValidCurrency(goodCurrency)
 	assert.Nil(t, err)
 
 	longCurrency := "ABCD"
-	err = checkValidCurrency(longCurrency)
+	err = CheckValidCurrency(longCurrency)
 	assert.Equal(t, errors_handler.CU002, err.Error())
 
 	lowerCurrency := "wer"
-	err = checkValidCurrency(lowerCurrency)
+	err = CheckValidCurrency(lowerCurrency)
 	assert.Equal(t, errors_handler.CU002, err.Error())
 
 	shortCurrency := "WE"
-	err = checkValidCurrency(shortCurrency)
+	err = CheckValidCurrency(shortCurrency)
 	assert.Equal(t, errors_handler.CU002, err.Error())
 
 	badCurrency := "!@#"
-	err = checkValidCurrency(badCurrency)
+	err = CheckValidCurrency(badCurrency)
 	assert.Equal(t, errors_handler.CU002, err.Error())
 
 	badCurrency2 := "ABCe"
-	err = checkValidCurrency(badCurrency2)
+	err = CheckValidCurrency(badCurrency2)
 	assert.Equal(t, errors_handler.CU002, err.Error())
 
 	badCurrency3 := "AB C"
-	err = checkValidCurrency(badCurrency3)
+	err = CheckValidCurrency(badCurrency3)
 	assert.Equal(t, errors_handler.CU002, err.Error())
 }

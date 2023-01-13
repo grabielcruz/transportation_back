@@ -24,7 +24,7 @@ func TestBillServices(t *testing.T) {
 	person2, err := persons.CreatePerson(persons.GeneratePersonFields())
 	assert.Nil(t, err)
 
-	t.Run("Get all bills response with zero bills", func(t *testing.T) {
+	t.Run("Get all pending bills response with zero bills", func(t *testing.T) {
 		billResponse, err := GetPendingBills(uuid.UUID{}, true, true, config.Limit, config.Offset)
 		assert.Nil(t, err)
 		assert.Len(t, billResponse.Bills, 0)
@@ -36,7 +36,6 @@ func TestBillServices(t *testing.T) {
 
 	t.Run("Create one pending bill", func(t *testing.T) {
 		billFields := GenerateBillFields(person1.ID)
-		assert.Nil(t, err)
 		newBill, err := CreatePendingBill(billFields)
 		assert.Nil(t, err)
 		assert.Equal(t, billFields.PersonId, newBill.PersonId)
@@ -480,6 +479,15 @@ func TestBillServices(t *testing.T) {
 		_, err = UpdatePendingBill(randomUUID, GenerateBillFields(person1.ID))
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
+	})
+
+	t.Run("Error when updating with zero person id", func(t *testing.T) {
+		bill, err := CreatePendingBill(GenerateBillFields(person1.ID))
+		assert.Nil(t, err)
+		updateFields := GenerateBillFields(uuid.UUID{})
+		_, err = UpdatePendingBill(bill.ID, updateFields)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.PE002, err.Error())
 	})
 
 	t.Run("Create and delete one bill", func(t *testing.T) {
