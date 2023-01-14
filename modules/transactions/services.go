@@ -20,7 +20,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 		return transactionResponse, fmt.Errorf(errors_handler.DB002)
 	}
 
-	row := tx.QueryRow("SELECT COUNT(*) FROM transactions WHERE account_id = $1;", account_id)
+	row := tx.QueryRow("SELECT COUNT(*) FROM transactions WHERE account_id = $1 AND id <> $2;", account_id, uuid.UUID{})
 	err = row.Scan(&transactionResponse.Count)
 	if err != nil {
 		tx.Rollback()
@@ -35,7 +35,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 
 	for rows.Next() {
 		t := Transaction{}
-		err = rows.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
+		err = rows.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.PendingBillId, &t.ClosedBillId, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			tx.Rollback()
 			return transactionResponse, fmt.Errorf(errors_handler.DB005)
@@ -99,7 +99,7 @@ func CreateTransaction(fields TransactionFields) (Transaction, error) {
 	}
 
 	row = tx.QueryRow(`INSERT INTO transactions (account_id, person_id, date, amount, description, balance) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`, fields.AccountId, fields.PersonId, fields.Date, fields.Amount, fields.Description, updatedBalance)
-	err = row.Scan(&tr.ID, &tr.AccountId, &tr.PersonId, &tr.Date, &tr.Amount, &tr.Description, &tr.Balance, &tr.CreatedAt, &tr.UpdatedAt)
+	err = row.Scan(&tr.ID, &tr.AccountId, &tr.PersonId, &tr.Date, &tr.Amount, &tr.Description, &tr.Balance, &tr.PendingBillId, &tr.ClosedBillId, &tr.CreatedAt, &tr.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
 		return tr, fmt.Errorf(errors_handler.DB007)
@@ -120,8 +120,11 @@ func GetTransaction(transaction_id uuid.UUID) (Transaction, error) {
 	if transaction_id == (uuid.UUID{}) {
 		return t, fmt.Errorf(errors_handler.DB001)
 	}
+	if transaction_id == (uuid.UUID{}) {
+		return t, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("SELECT * FROM transactions WHERE id = $1;", transaction_id)
-	err := row.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.CreatedAt, &t.UpdatedAt)
+	err := row.Scan(&t.ID, &t.AccountId, &t.PersonId, &t.Date, &t.Amount, &t.Description, &t.Balance, &t.PendingBillId, &t.ClosedBillId, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return t, fmt.Errorf(errors_handler.DB001)
 	}
@@ -137,17 +140,21 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 	udT := Transaction{}
 	updatedBalance := float64(0)
 
+	if transaction_id == (uuid.UUID{}) {
+		return udT, fmt.Errorf(errors_handler.DB001)
+	}
+
 	tx, err := database.DB.Begin()
 	if err != nil {
 		tx.Rollback()
 		return udT, fmt.Errorf(errors_handler.DB002)
 	}
 
-	row := tx.QueryRow("SELECT * FROM transactions ORDER BY created_at DESC LIMIT 1;")
-	err = row.Scan(&oldT.ID, &oldT.AccountId, &oldT.PersonId, &oldT.Date, &oldT.Amount, &oldT.Description, &oldT.Balance, &oldT.CreatedAt, &oldT.UpdatedAt)
+	row := tx.QueryRow("SELECT * FROM transactions WHERE id <> $1 ORDER BY created_at DESC LIMIT 1;", uuid.UUID{})
+	err = row.Scan(&oldT.ID, &oldT.AccountId, &oldT.PersonId, &oldT.Date, &oldT.Amount, &oldT.Description, &oldT.Balance, &oldT.PendingBillId, &oldT.ClosedBillId, &oldT.CreatedAt, &oldT.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
-		return udT, fmt.Errorf(errors_handler.TR004)
+		return udT, fmt.Errorf(errors_handler.DB001)
 	}
 
 	if oldT.ID != transaction_id {
@@ -176,7 +183,7 @@ func UpdateLastTransaction(transaction_id uuid.UUID, fields TransactionFields) (
 
 	row = tx.QueryRow(`UPDATE transactions SET account_id = $1, person_id = $2, date = $3, amount = $4, description = $5, balance = $6, created_at = $7, updated_at = $8 WHERE id = $9 RETURNING *;`,
 		fields.AccountId, fields.PersonId, fields.Date, fields.Amount, fields.Description, updatedBalance, oldT.CreatedAt, time.Now(), transaction_id)
-	err = row.Scan(&udT.ID, &udT.AccountId, &udT.PersonId, &udT.Date, &udT.Amount, &udT.Description, &udT.Balance, &udT.CreatedAt, &udT.UpdatedAt)
+	err = row.Scan(&udT.ID, &udT.AccountId, &udT.PersonId, &udT.Date, &udT.Amount, &udT.Description, &udT.Balance, &udT.PendingBillId, &udT.ClosedBillId, &udT.CreatedAt, &udT.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
 		return udT, fmt.Errorf(errors_handler.DB009)
@@ -205,11 +212,11 @@ func DeleteLastTransaction() (Transaction, error) {
 		return lT, fmt.Errorf(errors_handler.DB002)
 	}
 
-	row := tx.QueryRow("DELETE FROM transactions WHERE id in (SELECT id FROM transactions ORDER BY created_at DESC LIMIT 1) RETURNING *;")
-	err = row.Scan(&lT.ID, &lT.AccountId, &lT.PersonId, &lT.Date, &lT.Amount, &lT.Description, &lT.Balance, &lT.CreatedAt, &lT.UpdatedAt)
+	row := tx.QueryRow("DELETE FROM transactions WHERE id in (SELECT id FROM transactions WHERE id <> $1 ORDER BY created_at DESC LIMIT 1) RETURNING *;", uuid.UUID{})
+	err = row.Scan(&lT.ID, &lT.AccountId, &lT.PersonId, &lT.Date, &lT.Amount, &lT.Description, &lT.Balance, &lT.PendingBillId, &lT.ClosedBillId, &lT.CreatedAt, &lT.UpdatedAt)
 	if err != nil {
 		tx.Rollback()
-		return lT, fmt.Errorf(errors_handler.TR004)
+		return lT, fmt.Errorf(errors_handler.DB001)
 	}
 
 	newBalance := utility.RoundToTwoDecimalPlaces(lT.Balance - lT.Amount)
@@ -235,5 +242,5 @@ func DeleteLastTransaction() (Transaction, error) {
 }
 
 func deleteAllTransactions() {
-	database.DB.QueryRow("DELETE FROM transactions;")
+	database.DB.QueryRow("DELETE FROM transactions WHERE id <> $1;", uuid.UUID{})
 }

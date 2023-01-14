@@ -16,6 +16,8 @@ import (
 func GetPendingBills(person_id uuid.UUID, to_pay bool, to_charge bool, limit int, offset int) (BillResponse, error) {
 	billResponse := BillResponse{}
 	filters := []string{}
+	// to exclude zero bill
+	filters = append(filters, "id <> $1")
 
 	// can't have to_pay and to_charge on false at the same time
 	if !to_pay && !to_charge {
@@ -50,15 +52,15 @@ func GetPendingBills(person_id uuid.UUID, to_pay bool, to_charge bool, limit int
 	}
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM pending_bills %v;", searchString)
-	row := tx.QueryRow(countQuery)
+	row := tx.QueryRow(countQuery, uuid.UUID{})
 	err = row.Scan(&billResponse.Count)
 	if err != nil {
 		tx.Rollback()
 		return billResponse, fmt.Errorf(errors_handler.DB004)
 	}
 
-	recordsQuery := fmt.Sprintf("SELECT * FROM pending_bills %v ORDER BY created_at DESC LIMIT $1 OFFSET $2;", searchString)
-	rows, err := tx.Query(recordsQuery, limit, offset)
+	recordsQuery := fmt.Sprintf("SELECT * FROM pending_bills %v ORDER BY created_at DESC LIMIT $2 OFFSET $3;", searchString)
+	rows, err := tx.Query(recordsQuery, uuid.UUID{}, limit, offset)
 	if err != nil {
 		tx.Rollback()
 		return billResponse, fmt.Errorf(errors_handler.DB005)
@@ -110,6 +112,9 @@ func CreatePendingBill(fields BillFields) (Bill, error) {
 
 func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 	b := Bill{}
+	if bill_id == (uuid.UUID{}) {
+		return b, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("SELECT * FROM pending_bills WHERE id = $1;", bill_id)
 	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 
@@ -134,6 +139,9 @@ func UpdatePendingBill(bill_id uuid.UUID, fields BillFields) (Bill, error) {
 	if fields.PersonId == (uuid.UUID{}) {
 		return b, fmt.Errorf(errors_handler.PE002)
 	}
+	if bill_id == (uuid.UUID{}) {
+		return b, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("UPDATE pending_bills SET person_id = $1, date = $2, description = $3, currency = $4, amount = $5 WHERE id = $6 RETURNING *;", fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, bill_id)
 	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
@@ -148,6 +156,9 @@ func UpdatePendingBill(bill_id uuid.UUID, fields BillFields) (Bill, error) {
 
 func DeleteBill(bill_id uuid.UUID) (common.ID, error) {
 	id := common.ID{}
+	if bill_id == (uuid.UUID{}) {
+		return id, fmt.Errorf(errors_handler.DB001)
+	}
 	row := database.DB.QueryRow("DELETE FROM pending_bills WHERE id = $1 RETURNING id;", bill_id)
 	err := row.Scan(&id.ID)
 	if err != nil {
@@ -177,6 +188,6 @@ func createClosedBill(fields BillFields) (Bill, error) {
 }
 
 func emptyBills() {
-	database.DB.QueryRow("DELETE FROM pending_bills;")
-	database.DB.QueryRow("DELETE FROM closed_bills;")
+	database.DB.QueryRow("DELETE FROM pending_bills WHERE id <> $1;", uuid.UUID{})
+	database.DB.QueryRow("DELETE FROM closed_bills WHERE id <> $1;", uuid.UUID{})
 }

@@ -1,12 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-DROP TABLE IF EXISTS closed_bills;
-DROP TABLE IF EXISTS pending_bills;
-DROP TABLE IF EXISTS bill_cross;
-DROP TABLE IF EXISTS transactions;
-DROP TABLE IF EXISTS persons;
-DROP TABLE IF EXISTS money_accounts;
-DROP TABLE IF EXISTS currencies;
+DROP TABLE IF EXISTS closed_bills CASCADE;
+DROP TABLE IF EXISTS pending_bills CASCADE;
+DROP TABLE IF EXISTS bill_cross CASCADE;
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS persons CASCADE;
+DROP TABLE IF EXISTS money_accounts CASCADE;
+DROP TABLE IF EXISTS currencies CASCADE;
 
 CREATE TABLE currencies (
   currency VARCHAR (3) PRIMARY KEY
@@ -50,6 +50,8 @@ CREATE TABLE transactions (
   amount NUMERIC(17,2) NOT NULL,
   description VARCHAR NOT NULL,
   balance NUMERIC(17,2) NOT NULL CHECK (balance >= 0),
+  pending_bill_id uuid DEFAULT uuid_nil(),
+  closed_bill_id uuid DEFAULT uuid_nil(),
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (account_id) REFERENCES money_accounts(id),
@@ -61,13 +63,15 @@ INSERT INTO transactions (id, account_id, person_id, amount, description, balanc
 
 CREATE TABLE bill_cross (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+  person_id uuid NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   currency VARCHAR (3) NOT NULL,
   balance NUMERIC(17,2) NOT NULL,
+  FOREIGN KEY (person_id) REFERENCES persons(id),
   FOREIGN KEY (currency) REFERENCES currencies(currency)
 );
 
-INSERT INTO bill_cross (id, currency, balance) VALUES (uuid_nil(), '000', 0);
+INSERT INTO bill_cross (id, person_id, currency, balance) VALUES (uuid_nil(), uuid_nil(), '000', 0);
 
 -- to pay: has amount negative
 -- to charge: has amount positive
@@ -77,10 +81,10 @@ CREATE TABLE pending_bills (
   date DATE DEFAULT NOW(),
   description VARCHAR NOT NULL,
   currency VARCHAR (3) NOT NULL,
-  amount NUMERIC(17,2) NOT NULL CHECK (amount <> 0),
+  amount NUMERIC(17,2) NOT NULL,
    -- both can be null
-  parent_transaction_id uuid,
-  parent_bill_cross_id uuid,
+  parent_transaction_id uuid DEFAULT uuid_nil(),
+  parent_bill_cross_id uuid DEFAULT uuid_nil(),
   --
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -90,13 +94,15 @@ CREATE TABLE pending_bills (
   FOREIGN KEY (parent_bill_cross_id) REFERENCES bill_cross(id)
 );
 
+INSERT INTO pending_bills (id, person_id, description, currency, amount) VALUES (uuid_nil(), uuid_nil(), '', '000', 0);
+
 CREATE TABLE closed_bills (
   id uuid PRIMARY KEY,
   person_id uuid NOT NULL,
   date DATE DEFAULT NOW(),
   description VARCHAR NOT NULL,
   currency VARCHAR (3) NOT NULL,
-  amount NUMERIC(17,2) NOT NULL CHECK (amount <> 0),
+  amount NUMERIC(17,2) NOT NULL,
    -- both can be null
   parent_transaction_id uuid,
   parent_bill_cross_id uuid,
@@ -115,3 +121,11 @@ CREATE TABLE closed_bills (
   FOREIGN KEY (transaction_id) REFERENCES transactions(id),
   FOREIGN KEY (bill_cross_id) REFERENCES bill_cross(id)
 );
+
+INSERT INTO closed_bills (id, person_id, description, currency, amount, transaction_id, bill_cross_id)
+  VALUES (uuid_nil(), uuid_nil(), '', '000', 0, uuid_nil(), uuid_nil());
+
+ALTER TABLE transactions
+  ADD CONSTRAINT fk_transactions_pending_bills FOREIGN KEY (pending_bill_id) REFERENCES pending_bills (id);
+ALTER TABLE transactions
+  ADD CONSTRAINT fk_transactions_closed_bills FOREIGN KEY (closed_bill_id) REFERENCES closed_bills (id);

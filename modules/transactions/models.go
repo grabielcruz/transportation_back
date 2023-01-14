@@ -10,17 +10,11 @@ import (
 type Transaction struct {
 	ID uuid.UUID `json:"id"`
 	TransactionFields
-	PersonName string  `json:"person_name"`
-	Balance    float64 `json:"balance"`
+	PersonName    string    `json:"person_name"`
+	Balance       float64   `json:"balance"`
+	PendingBillId uuid.UUID `json:"pending_bill_id"`
+	ClosedBillId  uuid.UUID `json:"closed_bill_id"`
 	common.Timestamps
-}
-
-type TrashedTransaction struct {
-	ID uuid.UUID `json:"id"`
-	TransactionFields
-	PersonName string `json:"person_name"`
-	common.Timestamps
-	DeletedAt time.Time `json:"deleted_at"`
 }
 
 type TransactionFields struct {
@@ -30,13 +24,6 @@ type TransactionFields struct {
 	Amount      float64   `json:"amount"`
 	Description string    `json:"description"`
 }
-
-// type TrashedTransactionFields struct {
-// 	ID uuid.UUID `json:"id"`
-// 	TransactionFields
-// 	common.Timestamps
-// 	DeletedAt time.Time `json:"deleted_at"`
-// }
 
 type TransationResponse struct {
 	Transactions []Transaction `json:"transactions"`

@@ -47,7 +47,8 @@ const CU005 = "Currency it is not registered in database"
 const TR001 = "Could not get balance from account"
 const TR002 = "Transaction should not generate a negative balance"
 const TR003 = "The transaction requested is not the last transaction"
-const TR004 = "No transaction found in database"
+
+// const TR004 = "No transaction found in database"
 const TR005 = "Could not update account's balance"
 const TR006 = "New balance and updated balance missmatch, oldBalance = %v, newBalance = %v, updatedBalance = %v"
 

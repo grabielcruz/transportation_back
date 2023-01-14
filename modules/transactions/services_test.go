@@ -278,7 +278,7 @@ func TestTransactionServices(t *testing.T) {
 
 		_, err := UpdateLastTransaction(uuid.UUID{}, updateFields)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR004, err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	t.Run("Error when updating transaction that generates negative balance", func(t *testing.T) {
@@ -312,7 +312,7 @@ func TestTransactionServices(t *testing.T) {
 	t.Run("Error when deleting last transaction with no transactions", func(t *testing.T) {
 		_, err := DeleteLastTransaction()
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR004, err.Error())
+		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
 	// at the end of all transactions services tests
