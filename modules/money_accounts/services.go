@@ -58,13 +58,27 @@ func GetOneMoneyAccount(account_id uuid.UUID) (MoneyAccount, error) {
 	return ma, nil
 }
 
+func GetAccountsCurrency(account_id uuid.UUID) (string, error) {
+	currency := ""
+	if account_id == (uuid.UUID{}) {
+		return currency, fmt.Errorf(errors_handler.DB001)
+	}
+	row := database.DB.QueryRow("SELECT currency FROM money_accounts WHERE id = $1;", account_id)
+	err := row.Scan(&currency)
+	if err != nil {
+		return currency, errors_handler.MapDBErrors(err)
+	}
+	return currency, nil
+}
+
 func UpdateMoneyAccount(account_id uuid.UUID, fields MoneyAccountFields) (MoneyAccount, error) {
 	var uma MoneyAccount
 	if account_id == (uuid.UUID{}) {
 		return uma, fmt.Errorf(errors_handler.DB001)
 	}
-	row := database.DB.QueryRow("UPDATE money_accounts SET name = $1, details = $2, currency = $3, updated_at = $4 WHERE id = $5 RETURNING *;",
-		fields.Name, fields.Details, fields.Currency, time.Now(), account_id)
+	// should not update currency
+	row := database.DB.QueryRow("UPDATE money_accounts SET name = $1, details = $2, updated_at = $3 WHERE id = $4 RETURNING *;",
+		fields.Name, fields.Details, time.Now(), account_id)
 	err := row.Scan(&uma.ID, &uma.Name, &uma.Balance, &uma.Details, &uma.Currency, &uma.CreatedAt, &uma.UpdatedAt)
 	if err != nil {
 		return uma, errors_handler.MapDBErrors(err)

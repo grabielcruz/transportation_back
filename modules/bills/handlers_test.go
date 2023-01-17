@@ -156,7 +156,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, billFields.Amount, newBill.Amount)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when creating bill with zero person id", func(t *testing.T) {
 		billFields := GenerateBillFields(uuid.UUID{})
@@ -461,7 +461,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, float64(-77.77), billResponse.Bills[0].Amount)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when requesting not to pay and not to charge", func(t *testing.T) {
 		url := fmt.Sprintf(getBillsUrl, uuid.UUID{}, "false", "false", config.Limit, config.Offset)
@@ -538,7 +538,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, newBill.UpdatedAt, gotBill.UpdatedAt)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Create closed bill artifitially and get it with single response", func(t *testing.T) {
 		billFields := GenerateBillFields(person1.ID)
@@ -566,7 +566,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, newBill.UpdatedAt.UTC(), gotBill.UpdatedAt.UTC())
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when requesting unexisting bill", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -662,7 +662,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, updatedBill.UpdatedAt.UTC(), gotBill.UpdatedAt.UTC())
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when updating unexisting bill", func(t *testing.T) {
 		updateFields := GenerateBillFields(person1.ID)
@@ -724,7 +724,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when updating with empty description", func(t *testing.T) {
 		bill, err := CreatePendingBill(GenerateBillFields(person1.ID))
@@ -749,7 +749,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when updating with negative amount", func(t *testing.T) {
 		bill, err := CreatePendingBill(GenerateBillFields(person1.ID))
@@ -774,7 +774,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when updating with invalid currency", func(t *testing.T) {
 		bill, err := CreatePendingBill(GenerateBillFields(person1.ID))
@@ -799,7 +799,7 @@ func TestBillsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Create and delete one bill", func(t *testing.T) {
 		bill, err := CreatePendingBill(GenerateBillFields(person1.ID))

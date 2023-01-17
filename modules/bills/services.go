@@ -68,7 +68,7 @@ func GetPendingBills(person_id uuid.UUID, to_pay bool, to_charge bool, limit int
 
 	for rows.Next() {
 		b := Bill{}
-		err = rows.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
+		err = rows.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 		if err != nil {
 			tx.Rollback()
 			return billResponse, fmt.Errorf(errors_handler.DB005)
@@ -97,7 +97,7 @@ func CreatePendingBill(fields BillFields) (Bill, error) {
 		return bill, fmt.Errorf(errors_handler.BL002)
 	}
 	row := database.DB.QueryRow("INSERT INTO pending_bills (person_id, date, description, currency, amount, parent_transaction_id, parent_bill_cross_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;", fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, uuid.UUID{}, uuid.UUID{})
-	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Currency, &bill.Amount, &bill.ParentTransactionId, &bill.ParentBillCrossId, &bill.CreatedAt, &bill.UpdatedAt)
+	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Status, &bill.Currency, &bill.Amount, &bill.ParentTransactionId, &bill.ParentBillCrossId, &bill.CreatedAt, &bill.UpdatedAt)
 	if err != nil {
 		return bill, errors_handler.MapDBErrors(err)
 	}
@@ -116,12 +116,12 @@ func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 		return b, fmt.Errorf(errors_handler.DB001)
 	}
 	row := database.DB.QueryRow("SELECT * FROM pending_bills WHERE id = $1;", bill_id)
-	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
+	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 
 	// not found in pending_bills, look for it on closed bills
 	if err != nil {
 		row = database.DB.QueryRow("SELECT * FROM closed_bills WHERE id = $1;", bill_id)
-		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
+		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.RevertTransactionId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
 		// bill not found anywhere
 		if err != nil {
 			return b, fmt.Errorf(errors_handler.DB001)
@@ -143,7 +143,7 @@ func UpdatePendingBill(bill_id uuid.UUID, fields BillFields) (Bill, error) {
 		return b, fmt.Errorf(errors_handler.DB001)
 	}
 	row := database.DB.QueryRow("UPDATE pending_bills SET person_id = $1, date = $2, description = $3, currency = $4, amount = $5 WHERE id = $6 RETURNING *;", fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, bill_id)
-	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
+	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
 		return b, errors_handler.MapDBErrors(err)
 	}
@@ -162,7 +162,7 @@ func DeleteBill(bill_id uuid.UUID) (common.ID, error) {
 	row := database.DB.QueryRow("DELETE FROM pending_bills WHERE id = $1 RETURNING id;", bill_id)
 	err := row.Scan(&id.ID)
 	if err != nil {
-		return id, fmt.Errorf(errors_handler.DB001)
+		return id, errors_handler.MapDBErrors(err)
 	}
 	return id, nil
 }
@@ -174,7 +174,7 @@ func createClosedBill(fields BillFields) (Bill, error) {
 	}
 	randomUUID, _ := uuid.NewRandom()
 	row := database.DB.QueryRow("INSERT INTO closed_bills (id, person_id, date, description, currency, amount, parent_transaction_id, parent_bill_cross_id, transaction_id, bill_cross_id, post_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;", randomUUID, fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, uuid.UUID{}, uuid.UUID{}, uuid.UUID{}, uuid.UUID{}, "")
-	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Currency, &bill.Amount, &bill.ParentTransactionId, &bill.ParentBillCrossId, &bill.TransactionId, &bill.BillCrossId, &bill.PostNotes, &bill.CreatedAt, &bill.UpdatedAt)
+	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Status, &bill.Currency, &bill.Amount, &bill.ParentTransactionId, &bill.ParentBillCrossId, &bill.TransactionId, &bill.BillCrossId, &bill.RevertTransactionId, &bill.PostNotes, &bill.CreatedAt, &bill.UpdatedAt)
 	if err != nil {
 		return bill, errors_handler.MapDBErrors(err)
 	}
@@ -187,7 +187,7 @@ func createClosedBill(fields BillFields) (Bill, error) {
 	return bill, nil
 }
 
-func emptyBills() {
+func EmptyBills() {
 	database.DB.QueryRow("DELETE FROM pending_bills WHERE id <> $1;", uuid.UUID{})
 	database.DB.QueryRow("DELETE FROM closed_bills WHERE id <> $1;", uuid.UUID{})
 }

@@ -53,31 +53,7 @@ func GetTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter
 
 func CreateTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	transaction := Transaction{}
-	fields := TransactionFields{}
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		common.SendReadError(w)
-		return
-	}
-	if err := json.Unmarshal(body, &fields); err != nil {
-		common.SendUnmarshalError(w)
-		return
-	}
-	if err := checkTransactionFields(fields); err != nil {
-		common.SendValidationError(w, err.Error())
-		return
-	}
-	transaction, err = CreateTransaction(fields)
-	if err != nil {
-		common.SendServiceError(w, err.Error())
-		return
-	}
-	common.SendJson(w, http.StatusCreated, transaction)
-}
-
-func UpdateLastTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	updatedTransaction := Transaction{}
-	transaction_id, err := uuid.Parse(ps.ByName("transaction_id"))
+	person_id, err := uuid.Parse(ps.ByName("person_id"))
 	if err != nil {
 		common.SendInvalidUUIDError(w, err.Error())
 		return
@@ -96,12 +72,12 @@ func UpdateLastTransactionHandler(w http.ResponseWriter, r *http.Request, ps htt
 		common.SendValidationError(w, err.Error())
 		return
 	}
-	updatedTransaction, err = UpdateLastTransaction(transaction_id, fields)
+	transaction, err = CreateTransaction(fields, person_id, true)
 	if err != nil {
 		common.SendServiceError(w, err.Error())
 		return
 	}
-	common.SendJson(w, http.StatusOK, updatedTransaction)
+	common.SendJson(w, http.StatusCreated, transaction)
 }
 
 func DeleteLastTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

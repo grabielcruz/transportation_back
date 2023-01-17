@@ -46,7 +46,7 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, billFields.Amount, newBill.Amount)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Create 4 bills, 2 for person1, 2 for person2, negative and positive balance and get them filtered", func(t *testing.T) {
 		// person1
@@ -185,7 +185,7 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, float64(-77.77), billResponse.Bills[0].Amount)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when requesting not to pay and not to charge", func(t *testing.T) {
 		_, err := GetPendingBills(uuid.UUID{}, false, false, config.Limit, config.Offset)
@@ -399,7 +399,7 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, float64(-77.77), billResponse.Bills[0].Amount)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Create one bill and get it with single response", func(t *testing.T) {
 		billFields := GenerateBillFields(person1.ID)
@@ -418,7 +418,7 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, newBill.UpdatedAt, bill.UpdatedAt)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Create closed bill artifitially and get it with single response", func(t *testing.T) {
 		billFields := GenerateBillFields(person1.ID)
@@ -471,7 +471,7 @@ func TestBillServices(t *testing.T) {
 		assert.Equal(t, updatedBill.UpdatedAt, bill2.UpdatedAt)
 	})
 
-	emptyBills()
+	EmptyBills()
 
 	t.Run("Error when updating unexisting bill", func(t *testing.T) {
 		randomUUID, err := uuid.NewRandom()

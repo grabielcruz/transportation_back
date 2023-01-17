@@ -8,20 +8,24 @@ import (
 )
 
 type Transaction struct {
-	ID uuid.UUID `json:"id"`
+	ID       uuid.UUID `json:"id"`
+	PersonId uuid.UUID `json:"person_id"`
 	TransactionFields
+	AmountWithFee float64   `json:"amount_with_fee"`
+	Currency      string    `json:"currency"`
 	PersonName    string    `json:"person_name"`
 	Balance       float64   `json:"balance"`
 	PendingBillId uuid.UUID `json:"pending_bill_id"`
 	ClosedBillId  uuid.UUID `json:"closed_bill_id"`
+	RevertBillId  uuid.UUID `json:"revert_bill_id"`
 	common.Timestamps
 }
 
 type TransactionFields struct {
 	AccountId   uuid.UUID `json:"account_id"`
-	PersonId    uuid.UUID `json:"person_id"`
 	Date        time.Time `json:"date"`
 	Amount      float64   `json:"amount"`
+	Fee         float64   `json:"fee"`
 	Description string    `json:"description"`
 }
 

@@ -24,6 +24,10 @@ func GetRandomBalance() float64 {
 	return RoundToTwoDecimalPlaces(balance)
 }
 
+func GetRandomFee() float64 {
+	return RoundToTwoDecimalPlaces(rand.Float64())
+}
+
 func GetRandomNonZeroBalance() float64 {
 	balance := GetRandomBalance()
 	if balance == 0 {
@@ -106,6 +110,15 @@ func GetSumOfAmounts(nums []float64) float64 {
 	sum := float64(0)
 	for i := 0; i < len(nums); i++ {
 		sum = RoundToTwoDecimalPlaces(sum + RoundToTwoDecimalPlaces(nums[i]))
+	}
+	return sum
+}
+
+func GetSumOfAmountsWithFee(nums []float64, fee float64) float64 {
+	sum := float64(0)
+	for i := 0; i < len(nums); i++ {
+		amount := RoundToTwoDecimalPlaces(RoundToTwoDecimalPlaces(nums[i]) * RoundToTwoDecimalPlaces(1+fee))
+		sum = RoundToTwoDecimalPlaces(sum + amount)
 	}
 	return sum
 }

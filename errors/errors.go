@@ -53,7 +53,8 @@ func MapDBErrors(err error) error {
 		return fmt.Errorf(CU005)
 	case "pq: insert or update on table \"closed_bills\" violates foreign key constraint \"pending_bills_currency_fkey\"":
 		return fmt.Errorf(CU005)
-
+	case "pq: update or delete on table \"pending_bills\" violates foreign key constraint \"fk_transactions_pending_bills\" on table \"transactions\"":
+		return fmt.Errorf(BL003)
 	}
 	return err
 }
@@ -99,12 +100,22 @@ func MapServiceError(error_msg string) string {
 		return "TR003"
 	case TR005:
 		return "TR005"
+	case TR006:
+		return "TR006"
+	case TR007:
+		return "TR007"
+	case TR008:
+		return "TR008"
+	case TR009:
+		return "TR009"
 
 	// bills
 	case BL001:
 		return "BL001"
 	case BL002:
 		return "BL002"
+	case BL003:
+		return "BL003"
 
 	//default
 	default:

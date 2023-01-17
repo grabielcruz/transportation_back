@@ -1,7 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+
 DROP TABLE IF EXISTS closed_bills CASCADE;
 DROP TABLE IF EXISTS pending_bills CASCADE;
+DROP TYPE IF EXISTS bill_status CASCADE;
 DROP TABLE IF EXISTS bill_cross CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS persons CASCADE;
@@ -45,13 +47,16 @@ INSERT INTO persons (id, name, document) VALUES (uuid_nil(), '', '');
 CREATE TABLE transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
   account_id uuid NOT NULL,
-  person_id uuid,
+  person_id uuid NOT NULL,
   date DATE DEFAULT NOW(),
   amount NUMERIC(17,2) NOT NULL,
+  fee NUMERIC(17,2) DEFAULT 0.00 CHECK (fee >= 0),
+  amount_with_fee NUMERIC(17,2) NOT NULL,
   description VARCHAR NOT NULL,
   balance NUMERIC(17,2) NOT NULL CHECK (balance >= 0),
   pending_bill_id uuid DEFAULT uuid_nil(),
   closed_bill_id uuid DEFAULT uuid_nil(),
+  revert_bill_id uuid DEFAULT uuid_nil(),
   created_at TIMESTAMPTZ DEFAULT NOW(), 
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (account_id) REFERENCES money_accounts(id),
@@ -59,7 +64,7 @@ CREATE TABLE transactions (
 );
 
 -- zero transaction
-INSERT INTO transactions (id, account_id, person_id, amount, description, balance) VALUES (uuid_nil(), uuid_nil(), uuid_nil(), 0, '',0);
+INSERT INTO transactions (id, account_id, person_id, amount, fee, amount_with_fee, description, balance) VALUES (uuid_nil(), uuid_nil(), uuid_nil(), 0, 0, 0, '',0);
 
 CREATE TABLE bill_cross (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
@@ -73,6 +78,8 @@ CREATE TABLE bill_cross (
 
 INSERT INTO bill_cross (id, person_id, currency, balance) VALUES (uuid_nil(), uuid_nil(), '000', 0);
 
+CREATE TYPE bill_status AS ENUM ('PENDING', 'SOLVED', 'REVERTED', 'GROUPED');
+
 -- to pay: has amount negative
 -- to charge: has amount positive
 CREATE TABLE pending_bills (
@@ -80,6 +87,7 @@ CREATE TABLE pending_bills (
   person_id uuid NOT NULL,
   date DATE DEFAULT NOW(),
   description VARCHAR NOT NULL,
+  status bill_status DEFAULT 'PENDING',
   currency VARCHAR (3) NOT NULL,
   amount NUMERIC(17,2) NOT NULL,
    -- both can be null
@@ -90,17 +98,19 @@ CREATE TABLE pending_bills (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   FOREIGN KEY (person_id) REFERENCES persons(id),
   FOREIGN KEY (currency) REFERENCES currencies(currency),
-  FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id),
+  FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
   FOREIGN KEY (parent_bill_cross_id) REFERENCES bill_cross(id)
 );
 
 INSERT INTO pending_bills (id, person_id, description, currency, amount) VALUES (uuid_nil(), uuid_nil(), '', '000', 0);
+
 
 CREATE TABLE closed_bills (
   id uuid PRIMARY KEY,
   person_id uuid NOT NULL,
   date DATE DEFAULT NOW(),
   description VARCHAR NOT NULL,
+  status bill_status DEFAULT 'SOLVED',
   currency VARCHAR (3) NOT NULL,
   amount NUMERIC(17,2) NOT NULL,
    -- both can be null
@@ -110,6 +120,7 @@ CREATE TABLE closed_bills (
   -- one of these should be not null
   transaction_id uuid,
   bill_cross_id uuid,
+  revert_transaction_id uuid,
   --
   post_notes VARCHAR,
   created_at TIMESTAMPTZ DEFAULT NOW(), 
@@ -119,7 +130,8 @@ CREATE TABLE closed_bills (
   FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id),
   FOREIGN KEY (parent_bill_cross_id) REFERENCES bill_cross(id),
   FOREIGN KEY (transaction_id) REFERENCES transactions(id),
-  FOREIGN KEY (bill_cross_id) REFERENCES bill_cross(id)
+  FOREIGN KEY (bill_cross_id) REFERENCES bill_cross(id),
+  FOREIGN KEY (revert_transaction_id) REFERENCES transactions(id)
 );
 
 INSERT INTO closed_bills (id, person_id, description, currency, amount, transaction_id, bill_cross_id)
@@ -129,3 +141,5 @@ ALTER TABLE transactions
   ADD CONSTRAINT fk_transactions_pending_bills FOREIGN KEY (pending_bill_id) REFERENCES pending_bills (id);
 ALTER TABLE transactions
   ADD CONSTRAINT fk_transactions_closed_bills FOREIGN KEY (closed_bill_id) REFERENCES closed_bills (id);
+ALTER TABLE transactions
+  ADD CONSTRAINT fk_revert_closed_bills FOREIGN KEY (revert_bill_id) REFERENCES closed_bills (id);

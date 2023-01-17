@@ -51,10 +51,14 @@ const TR003 = "The transaction requested is not the last transaction"
 // const TR004 = "No transaction found in database"
 const TR005 = "Could not update account's balance"
 const TR006 = "New balance and updated balance missmatch, oldBalance = %v, newBalance = %v, updatedBalance = %v"
+const TR007 = "Transaction should have a person"
+const TR008 = "Transaction should have an amount different from zero"
+const TR009 = "Fee should be between 0 and 1"
 
 // Bills
 const BL001 = "Could not request empty set of bills"
 const BL002 = "Can not create bill with amount of zero"
+const BL003 = "Can not delete pending bill associated to transaction"
 
 // const BL003 = "Person with the specified uuid does not exists"
 // const BL004 = "Currency it is not registered in database"
