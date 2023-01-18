@@ -1,6 +1,10 @@
 package utility
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestRandomString(t *testing.T) {
 	randStr1 := GetRandomString(23)
@@ -45,5 +49,13 @@ func TestGetRandomCurrency(t *testing.T) {
 	}
 	if !passed {
 		t.Fatalf(`TestGetRandomCurrency() dit not generate different currencies in 100 iterations`)
+	}
+}
+
+func TestRoundToTwoDecimalPlaces(t *testing.T) {
+	toRound := []float64{10.099, 0.012, 0.496, 0.454, 0.456, 1.996, -1.996, -1.995, -1.994, 1.96}
+	rounded := []float64{10.10, 0.01, 0.50, 0.45, 0.46, 2.00, -2.00, -2.00, -1.99, 1.96}
+	for i := range toRound {
+		assert.Equal(t, rounded[i], RoundToTwoDecimalPlaces(toRound[i]))
 	}
 }

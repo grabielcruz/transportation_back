@@ -1,7 +1,8 @@
 package environment
 
 import (
-	errors_handler "github.com/grabielcruz/transportation_back/errors"
+	"log"
+
 	"github.com/joho/godotenv"
 )
 
@@ -9,6 +10,8 @@ import (
 func LoadEnvironment(envPath string) map[string]string {
 	var myEnv map[string]string
 	myEnv, err := godotenv.Read(envPath)
-	errors_handler.CheckError(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return myEnv
 }

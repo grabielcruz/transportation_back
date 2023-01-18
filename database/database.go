@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/grabielcruz/transportation_back/environment"
-	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	_ "github.com/lib/pq"
 )
 
@@ -25,16 +24,22 @@ func SetupDB(mode string) {
 	password := myEnv["password"]
 	dbname := myEnv["dbname"]
 
-	port, _ := strconv.Atoi(strPort)
-	errors_handler.CheckError(err)
+	port, err := strconv.Atoi(strPort)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 	fmt.Println(psqlInfo)
 	DB, err = sql.Open("postgres", psqlInfo)
-	errors_handler.CheckError(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	err = DB.Ping()
-	errors_handler.CheckError(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	log.Println("Database connected")
 }
@@ -45,10 +50,14 @@ func GetDB() *sql.DB {
 
 func CreateTables(sqlPath string) {
 	dat, err := os.ReadFile(sqlPath)
-	errors_handler.CheckError(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	sqlStr := string(dat)
 	_, err = DB.Exec(sqlStr)
-	errors_handler.CheckError(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func CloseConnection() error {

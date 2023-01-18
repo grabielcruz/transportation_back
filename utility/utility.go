@@ -20,7 +20,51 @@ func GetRandomString(length int) string {
 
 func GetRandomBalance() float64 {
 	rand.Seed(change_seed())
-	return math.Round(rand.Float64()*10000) / 100
+	balance := rand.Float64()
+	return RoundToTwoDecimalPlaces(balance)
+}
+
+func GetRandomFee() float64 {
+	return RoundToTwoDecimalPlaces(rand.Float64())
+}
+
+func GetRandomNonZeroBalance() float64 {
+	balance := GetRandomBalance()
+	if balance == 0 {
+		balance = 1.00
+	}
+	return balance
+}
+
+func GetRandomPositiveBalance() float64 {
+	balance := GetRandomBalance()
+	if balance == 0 {
+		balance = 1.00
+	}
+	if balance < 0 {
+		balance = balance * -1
+	}
+	return balance
+}
+
+func GetRandomNegativeBalance() float64 {
+	balance := GetRandomBalance()
+	if balance == 0 {
+		balance = -1.00
+	}
+	if balance > 0 {
+		balance = balance * -1
+	}
+	return balance
+}
+
+func getRandomFloat64() float64 {
+	rand.Seed(change_seed())
+	return rand.Float64()
+}
+
+func RoundToTwoDecimalPlaces(f float64) float64 {
+	return math.Round(f*100) / 100
 }
 
 func GetRandomBoolean() bool {
@@ -31,7 +75,7 @@ func GetRandomBoolean() bool {
 func GetRandomCurrency() string {
 	curr := "USD"
 	if GetRandomBoolean() {
-		curr = "VES"
+		curr = "VED"
 	}
 	return curr
 }
@@ -47,4 +91,34 @@ func GenerateDummyData() DummyType {
 	dummy.Hola = GetRandomString(5)
 	dummy.Que = GetRandomString(6)
 	return dummy
+}
+
+func GetSliceOfAmounts(total int) []float64 {
+	nums := []float64{}
+	for i := 1; i < total+1; i++ {
+		f := getRandomFloat64() * 10
+		if i%10 == 0 {
+			f *= -1
+			f /= 10
+		}
+		nums = append(nums, f)
+	}
+	return nums
+}
+
+func GetSumOfAmounts(nums []float64) float64 {
+	sum := float64(0)
+	for i := 0; i < len(nums); i++ {
+		sum = RoundToTwoDecimalPlaces(sum + RoundToTwoDecimalPlaces(nums[i]))
+	}
+	return sum
+}
+
+func GetSumOfAmountsWithFee(nums []float64, fee float64) float64 {
+	sum := float64(0)
+	for i := 0; i < len(nums); i++ {
+		amount := RoundToTwoDecimalPlaces(RoundToTwoDecimalPlaces(nums[i]) * RoundToTwoDecimalPlaces(1+fee))
+		sum = RoundToTwoDecimalPlaces(sum + amount)
+	}
+	return sum
 }
