@@ -10,6 +10,7 @@ import (
 	"github.com/grabielcruz/transportation_back/modules/bills"
 	"github.com/grabielcruz/transportation_back/modules/config"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
+	"github.com/grabielcruz/transportation_back/modules/person_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/stretchr/testify/assert"
@@ -51,6 +52,39 @@ func TestTransactionServices(t *testing.T) {
 
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
+
+	t.Run("Create one transaction with a person and a person account", func(t *testing.T) {
+		transactionFields := GenerateTransactionFields(account.ID)
+		// person account
+		personAccountFields := person_accounts.GeneratePersonAccountFields()
+		// force same currency
+		personAccountFields.Currency = account.Currency
+		newPersonAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
+		assert.Nil(t, err)
+		//
+		transactionFields.PersonAccountId = newPersonAccount.ID
+		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		assert.Nil(t, err)
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(newTransaction.AccountId)
+		assert.Nil(t, err)
+		assert.Equal(t, newTransaction.Balance, updatedAccount.Balance)
+		assert.Equal(t, newTransaction.AccountId, updatedAccount.ID)
+		assert.Equal(t, newTransaction.PersonName, person.Name)
+		assert.Equal(t, newTransaction.PersonId, person.ID)
+		// persons account
+		assert.Equal(t, newTransaction.PersonAccountId, newPersonAccount.ID)
+		assert.Equal(t, newTransaction.PersonAccountName, newPersonAccount.Name)
+		assert.Equal(t, newTransaction.PersonAccountDescription, newPersonAccount.Description)
+		assert.Equal(t, newTransaction.Currency, newPersonAccount.Currency)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	person_accounts.DeleteAllPersonAccounts()
+	deleteAllTransactions()
+
+	t.Run("Error when creating a transaction with an unexisting person account different than zero", func(t *testing.T) {
+
+	})
 
 	t.Run("Error when creating transaction with unexisting account", func(t *testing.T) {
 		zeroId := uuid.UUID{}

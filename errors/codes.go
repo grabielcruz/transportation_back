@@ -54,6 +54,8 @@ const TR006 = "New balance and updated balance missmatch, oldBalance = %v, newBa
 const TR007 = "Transaction should have a person"
 const TR008 = "Transaction should have an amount different from zero"
 const TR009 = "Fee should be between 0 and 1"
+const TR010 = "Person's account does not belong to the person specified"
+const TR011 = "Currency's mismatch"
 
 // Bills
 const BL001 = "Could not request empty set of bills"
@@ -62,3 +64,6 @@ const BL003 = "Can not delete pending bill associated to transaction"
 
 // const BL003 = "Person with the specified uuid does not exists"
 // const BL004 = "Currency it is not registered in database"
+
+//Person Accounts
+const PA001 = "Person with the specified uuid does not exists"

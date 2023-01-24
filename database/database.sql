@@ -1,11 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-
 DROP TABLE IF EXISTS closed_bills CASCADE;
 DROP TABLE IF EXISTS pending_bills CASCADE;
 DROP TYPE IF EXISTS bill_status CASCADE;
 DROP TABLE IF EXISTS bill_cross CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS person_accounts CASCADE;
 DROP TABLE IF EXISTS persons CASCADE;
 DROP TABLE IF EXISTS money_accounts CASCADE;
 DROP TABLE IF EXISTS currencies CASCADE;
@@ -44,10 +44,25 @@ CREATE TABLE persons (
 -- zero person
 INSERT INTO persons (id, name, document) VALUES (uuid_nil(), '', '');
 
+CREATE TABLE person_accounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+  person_id uuid NOT NULL,
+  name VARCHAR NOT NULL,
+  description VARCHAR NOT NULL,
+  currency VARCHAR (3) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  FOREIGN KEY (person_id) REFERENCES persons(id),
+  FOREIGN KEY (currency) REFERENCES currencies(currency)
+);
+
 CREATE TABLE transactions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
   account_id uuid NOT NULL,
   person_id uuid NOT NULL,
+  person_account_id uuid,
+  person_account_name VARCHAR,
+  person_account_description VARCHAR,
   date DATE DEFAULT NOW(),
   amount NUMERIC(17,2) NOT NULL,
   fee NUMERIC(17,2) DEFAULT 0.00 CHECK (fee >= 0),

@@ -82,7 +82,7 @@ func TestPersonService(t *testing.T) {
 
 	DeleteAllPersons()
 
-	t.Run("It should genereate error when trying to update unexisting person", func(t *testing.T) {
+	t.Run("It should generate error when trying to update unexisting person", func(t *testing.T) {
 		// with zero uuid
 		zeroUUID := uuid.UUID{}
 		zeroFields := PersonFields{}

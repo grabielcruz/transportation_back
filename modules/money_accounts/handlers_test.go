@@ -218,7 +218,8 @@ func TestMoneyAccountsHandlers(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, updateFields.Name, updatedAccount.Name)
 		assert.Equal(t, updateFields.Details, updatedAccount.Details)
-		assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
+		// currency can't be updated
+		// assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
 		// assert.Greater(t, updatedAccount.UpdatedAt, updatedAccount.CreatedAt)
 	})
 

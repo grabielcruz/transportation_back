@@ -106,7 +106,8 @@ func TestMoneyAccountServices(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, updatedAccount.ID, createdAccount.ID)
 		assert.Equal(t, updateFields.Name, updatedAccount.Name)
-		assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
+		// currency can't be updated
+		// assert.Equal(t, updateFields.Currency, updatedAccount.Currency)
 		assert.Equal(t, updateFields.Details, updatedAccount.Details)
 		// assert.Greater(t, updatedAccount.UpdatedAt.Nanosecond(), updatedAccount.CreatedAt.Nanosecond())
 	})
