@@ -10,11 +10,14 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/grabielcruz/transportation_back/common"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/bills"
 	"github.com/grabielcruz/transportation_back/modules/config"
+	"github.com/grabielcruz/transportation_back/modules/currencies"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
+	"github.com/grabielcruz/transportation_back/modules/person_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
 	"github.com/grabielcruz/transportation_back/utility"
 	"github.com/julienschmidt/httprouter"
@@ -30,6 +33,7 @@ func TestTransactionsHandlers(t *testing.T) {
 	router := httprouter.New()
 	Routes(router)
 	bills.Routes(router)
+	person_accounts.Routes(router)
 
 	account, err := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
 	assert.Nil(t, err)
@@ -78,6 +82,122 @@ func TestTransactionsHandlers(t *testing.T) {
 
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
+
+	t.Run("Create one transaction with a person and a person account, then delete the person account", func(t *testing.T) {
+		// person account
+		personAccountFields := person_accounts.GeneratePersonAccountFields()
+		// force same currency
+		personAccountFields.Currency = account.Currency
+		newPersonAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
+		assert.Nil(t, err)
+		//
+
+		buf := bytes.Buffer{}
+		fields := GenerateTransactionFields(account.ID)
+		fields.PersonAccountId = newPersonAccount.ID
+		err = json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transaction_to_pending_bill/"+person.ID.String(), &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusCreated, w.Code)
+
+		newTransaction := Transaction{}
+		err = json.Unmarshal(w.Body.Bytes(), &newTransaction)
+		assert.Nil(t, err)
+
+		updatedAccount, err := money_accounts.GetOneMoneyAccount(newTransaction.AccountId)
+		assert.Nil(t, err)
+		assert.Equal(t, newTransaction.Balance, updatedAccount.Balance)
+		assert.Equal(t, newTransaction.AccountId, updatedAccount.ID)
+		assert.Equal(t, newTransaction.PersonName, person.Name)
+		assert.Equal(t, newTransaction.PersonId, person.ID)
+		// persons account
+		assert.Equal(t, newTransaction.PersonAccountId, newPersonAccount.ID)
+		assert.Equal(t, newTransaction.PersonAccountName, newPersonAccount.Name)
+		assert.Equal(t, newTransaction.PersonAccountDescription, newPersonAccount.Description)
+		assert.Equal(t, newTransaction.Currency, newPersonAccount.Currency)
+
+		// delete person account
+		w2 := httptest.NewRecorder()
+		req2, err := http.NewRequest(http.MethodDelete, "/one_person_account/"+newPersonAccount.ID.String(), nil)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w2, req2)
+		assert.Equal(t, http.StatusOK, w2.Code)
+
+		deletedId := common.ID{}
+		err = json.Unmarshal(w2.Body.Bytes(), &deletedId)
+		assert.Nil(t, err)
+		assert.Equal(t, newPersonAccount.ID, deletedId.ID)
+		obtainedTransaction, err := GetTransaction(newTransaction.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newTransaction.ID, obtainedTransaction.ID)
+	})
+
+	money_accounts.ResetAccountsBalance(account.ID)
+	person_accounts.DeleteAllPersonAccounts()
+	deleteAllTransactions()
+
+	// ESTE ES PERSON_ACOUNT
+	t.Run("Error when creating a transaction with an unexisting person account different than zero", func(t *testing.T) {
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields.PersonAccountId = randId
+
+		buf := bytes.Buffer{}
+		err = json.NewEncoder(&buf).Encode(transactionFields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transaction_to_pending_bill/"+person.ID.String(), &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.PA002, errResponse.Error)
+		assert.Equal(t, "PA002", errResponse.Code)
+	})
+
+	// ESTE ES PERSON_ACOUNT
+	t.Run("Error when creating a transaction with an person account with currency mismatch", func(t *testing.T) {
+		// person account
+		personAccountFields := person_accounts.GeneratePersonAccountFields()
+		// force different currency
+		newCurrency, err := currencies.CreateCurrency("ABC")
+		assert.Nil(t, err)
+		personAccountFields.Currency = newCurrency
+		newPersonAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
+		assert.Nil(t, err)
+		//
+		fields := GenerateTransactionFields(account.ID)
+		fields.PersonAccountId = newPersonAccount.ID
+
+		buf := bytes.Buffer{}
+		err = json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transaction_to_pending_bill/"+person.ID.String(), &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.TR011, errResponse.Error)
+		assert.Equal(t, "TR011", errResponse.Code)
+	})
 
 	t.Run("Error when creating a transaction with an unexisting account", func(t *testing.T) {
 		buf := bytes.Buffer{}

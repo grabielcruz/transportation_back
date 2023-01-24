@@ -177,8 +177,8 @@ func TestPersonAccountHandler(t *testing.T) {
 		errResponse := errors_handler.ErrorResponse{}
 		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 		assert.Nil(t, err)
-		assert.Equal(t, errors_handler.DB001, errResponse.Error)
-		assert.Equal(t, "DB001", errResponse.Code)
+		assert.Equal(t, errors_handler.PA002, errResponse.Error)
+		assert.Equal(t, "PA002", errResponse.Code)
 	})
 
 	t.Run("It should create an update one person account", func(t *testing.T) {
@@ -310,7 +310,7 @@ func TestPersonAccountHandler(t *testing.T) {
 
 		_, err = GetOnePersonAccount(deletedId.ID)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.DB001, err.Error())
+		assert.Equal(t, errors_handler.PA002, err.Error())
 	})
 
 	DeleteAllPersonAccounts()

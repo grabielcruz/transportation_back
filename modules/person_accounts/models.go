@@ -13,9 +13,13 @@ type PersonAccount struct {
 }
 
 type PersonAccountFields struct {
+	UpdatePersonAccountFields
+	Currency string `json:"currency"`
+}
+
+type UpdatePersonAccountFields struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Currency    string `json:"currency"`
 }
 
 type badPersonAccountFields struct {

@@ -69,12 +69,12 @@ func TestPersonAccountsService(t *testing.T) {
 		assert.Nil(t, err)
 		_, err = GetOnePersonAccount(randId)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.DB001, err.Error())
+		assert.Equal(t, errors_handler.PA002, err.Error())
 	})
 
 	t.Run("It should create and update one person account", func(t *testing.T) {
 		createFields := GeneratePersonAccountFields()
-		updateFields := GeneratePersonAccountFields()
+		updateFields := GenerateUpdatePersonAccountFields()
 		newAccount, err := CreatePersonAccount(person.ID, createFields)
 		assert.Nil(t, err)
 		updatedAccount, err := UpdatePersonAccount(newAccount.ID, updateFields)
@@ -90,7 +90,7 @@ func TestPersonAccountsService(t *testing.T) {
 	t.Run("It should generate and error when trying to update unexisting account", func(t *testing.T) {
 		randId, err := uuid.NewRandom()
 		assert.Nil(t, err)
-		_, err = UpdatePersonAccount(randId, GeneratePersonAccountFields())
+		_, err = UpdatePersonAccount(randId, GenerateUpdatePersonAccountFields())
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
@@ -103,7 +103,7 @@ func TestPersonAccountsService(t *testing.T) {
 		assert.Equal(t, newAccount.ID, deletedId.ID)
 		_, err = GetOnePersonAccount(deletedId.ID)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.DB001, err.Error())
+		assert.Equal(t, errors_handler.PA002, err.Error())
 	})
 
 	DeleteAllPersonAccounts()

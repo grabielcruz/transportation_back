@@ -105,11 +105,11 @@ func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero
 
 		// account does not belong to the person
 		if personAccount.PersonId != person_id {
-			return tr, fmt.Errorf(errors_handler.TR009)
+			return tr, fmt.Errorf(errors_handler.TR010)
 		}
 		// currency mismatch
 		if personAccount.Currency != transactionCurrency {
-			return tr, fmt.Errorf(errors_handler.TR010)
+			return tr, fmt.Errorf(errors_handler.TR011)
 		}
 	}
 

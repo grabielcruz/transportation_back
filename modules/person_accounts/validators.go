@@ -19,3 +19,13 @@ func checkPersonAccountFields(fields PersonAccountFields) error {
 	}
 	return nil
 }
+
+func checkUpdatePersonAccountFields(fields UpdatePersonAccountFields) error {
+	if fields.Name == "" {
+		return fmt.Errorf("Name is required")
+	}
+	if fields.Description == "" {
+		return fmt.Errorf("Description is required")
+	}
+	return nil
+}

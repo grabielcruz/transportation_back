@@ -67,3 +67,4 @@ const BL003 = "Can not delete pending bill associated to transaction"
 
 //Person Accounts
 const PA001 = "Person with the specified uuid does not exists"
+const PA002 = "Person account does not exist"

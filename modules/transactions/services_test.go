@@ -9,6 +9,7 @@ import (
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/bills"
 	"github.com/grabielcruz/transportation_back/modules/config"
+	"github.com/grabielcruz/transportation_back/modules/currencies"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/person_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
@@ -53,7 +54,8 @@ func TestTransactionServices(t *testing.T) {
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
 
-	t.Run("Create one transaction with a person and a person account", func(t *testing.T) {
+	// ESTE ES PERSON_ACOUNT
+	t.Run("Create one transaction with a person and a person account, then delete the person account", func(t *testing.T) {
 		transactionFields := GenerateTransactionFields(account.ID)
 		// person account
 		personAccountFields := person_accounts.GeneratePersonAccountFields()
@@ -76,14 +78,46 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, newTransaction.PersonAccountName, newPersonAccount.Name)
 		assert.Equal(t, newTransaction.PersonAccountDescription, newPersonAccount.Description)
 		assert.Equal(t, newTransaction.Currency, newPersonAccount.Currency)
+
+		// delete person account
+		_, err = person_accounts.DeletePersonAccount(newPersonAccount.ID)
+		assert.Nil(t, err)
+		obtainedTransaction, err := GetTransaction(newTransaction.ID)
+		assert.Nil(t, err)
+		assert.Equal(t, newTransaction, obtainedTransaction)
 	})
 
 	money_accounts.ResetAccountsBalance(account.ID)
 	person_accounts.DeleteAllPersonAccounts()
 	deleteAllTransactions()
 
+	// ESTE ES PERSON_ACOUNT
 	t.Run("Error when creating a transaction with an unexisting person account different than zero", func(t *testing.T) {
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields.PersonAccountId = randId
+		_, err = CreateTransaction(transactionFields, person.ID, true)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.PA002, err.Error())
+	})
 
+	// ESTE ES PERSON_ACOUNT
+	t.Run("Error when creating a transaction with an person account with currency mismatch", func(t *testing.T) {
+		// person account
+		personAccountFields := person_accounts.GeneratePersonAccountFields()
+		// force different currency
+		newCurrency, err := currencies.CreateCurrency("ABC")
+		assert.Nil(t, err)
+		personAccountFields.Currency = newCurrency
+		newPersonAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
+		assert.Nil(t, err)
+		//
+		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields.PersonAccountId = newPersonAccount.ID
+		_, err = CreateTransaction(transactionFields, person.ID, true)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR011, err.Error())
 	})
 
 	t.Run("Error when creating transaction with unexisting account", func(t *testing.T) {
@@ -456,6 +490,25 @@ func TestTransactionServices(t *testing.T) {
 
 	money_accounts.ResetAccountsBalance(account.ID)
 	deleteAllTransactions()
+
+	// ESTE ES PENDING ACCOUNT
+	t.Run("Create transaction with person account, then delete that last transaction", func(t *testing.T) {
+		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields.Fee = utility.GetRandomFee()
+		personAccountFields := person_accounts.GeneratePersonAccountFields()
+		personAccountFields.Currency = account.Currency
+		personAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
+		assert.Nil(t, err)
+		transactionFields.PersonAccountId = personAccount.ID
+		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		assert.Nil(t, err)
+		// delete account
+		id, err := DeleteLastTransaction()
+		assert.Nil(t, err)
+		assert.Equal(t, id.ID, newTransaction.ID)
+	})
+
+	person_accounts.DeleteAllPersonAccounts()
 
 	t.Run("Error when deleting last transaction with no transactions", func(t *testing.T) {
 		_, err := DeleteLastTransaction()

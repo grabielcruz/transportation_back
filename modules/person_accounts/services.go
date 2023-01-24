@@ -1,6 +1,7 @@
 package person_accounts
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -43,13 +44,13 @@ func GetOnePersonAccount(person_account_id uuid.UUID) (PersonAccount, error) {
 	row := database.DB.QueryRow("SELECT * FROM person_accounts WHERE id = $1;", person_account_id)
 	err := row.Scan(&pa.ID, &pa.PersonId, &pa.Name, &pa.Description, &pa.Currency, &pa.CreatedAt, &pa.UpdatedAt)
 	if err != nil {
-		return pa, errors_handler.MapDBErrors(err)
+		return pa, fmt.Errorf(errors_handler.PA002)
 	}
 	return pa, nil
 }
 
 // UpdatePersonAccount won't update currency, only name and description
-func UpdatePersonAccount(person_account_id uuid.UUID, fields PersonAccountFields) (PersonAccount, error) {
+func UpdatePersonAccount(person_account_id uuid.UUID, fields UpdatePersonAccountFields) (PersonAccount, error) {
 	pa := PersonAccount{}
 	row := database.DB.QueryRow("UPDATE person_accounts SET name = $1, description = $2, updated_at = $3 WHERE id = $4 RETURNING *;",
 		fields.Name, fields.Description, time.Now(), person_account_id)

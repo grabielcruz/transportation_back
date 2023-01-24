@@ -110,7 +110,8 @@ func MapServiceError(error_msg string) string {
 		return "TR009"
 	case TR010:
 		return "TR010"
-
+	case TR011:
+		return "TR011"
 	// bills
 	case BL001:
 		return "BL001"
@@ -122,6 +123,8 @@ func MapServiceError(error_msg string) string {
 	// person accounts
 	case PA001:
 		return "PA001"
+	case PA002:
+		return "PA002"
 
 	//default
 	default:

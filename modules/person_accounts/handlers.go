@@ -68,7 +68,7 @@ func GetOnePersonAccountHandler(w http.ResponseWriter, r *http.Request, ps httpr
 }
 
 func UpdatePersonAccountHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	fields := PersonAccountFields{}
+	fields := UpdatePersonAccountFields{}
 	account_id, err := uuid.Parse(ps.ByName("account_id"))
 	if err != nil {
 		common.SendInvalidUUIDError(w, err.Error())
@@ -83,7 +83,7 @@ func UpdatePersonAccountHandler(w http.ResponseWriter, r *http.Request, ps httpr
 		common.SendUnmarshalError(w)
 		return
 	}
-	if err := checkPersonAccountFields(fields); err != nil {
+	if err := checkUpdatePersonAccountFields(fields); err != nil {
 		common.SendValidationError(w, err.Error())
 		return
 	}
