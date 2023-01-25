@@ -121,7 +121,7 @@ func GetOneBill(bill_id uuid.UUID) (Bill, error) {
 	// not found in pending_bills, look for it on closed bills
 	if err != nil {
 		row = database.DB.QueryRow("SELECT * FROM closed_bills WHERE id = $1;", bill_id)
-		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.RevertTransactionId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
+		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
 		// bill not found anywhere
 		if err != nil {
 			return b, fmt.Errorf(errors_handler.DB001)
@@ -174,7 +174,7 @@ func createClosedBill(fields BillFields) (Bill, error) {
 	}
 	randomUUID, _ := uuid.NewRandom()
 	row := database.DB.QueryRow("INSERT INTO closed_bills (id, person_id, date, description, currency, amount, parent_transaction_id, parent_bill_cross_id, transaction_id, bill_cross_id, post_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;", randomUUID, fields.PersonId, fields.Date, fields.Description, fields.Currency, fields.Amount, uuid.UUID{}, uuid.UUID{}, uuid.UUID{}, uuid.UUID{}, "")
-	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Status, &bill.Currency, &bill.Amount, &bill.ParentTransactionId, &bill.ParentBillCrossId, &bill.TransactionId, &bill.BillCrossId, &bill.RevertTransactionId, &bill.PostNotes, &bill.CreatedAt, &bill.UpdatedAt)
+	err := row.Scan(&bill.ID, &bill.PersonId, &bill.Date, &bill.Description, &bill.Status, &bill.Currency, &bill.Amount, &bill.ParentTransactionId, &bill.ParentBillCrossId, &bill.TransactionId, &bill.BillCrossId, &bill.PostNotes, &bill.CreatedAt, &bill.UpdatedAt)
 	if err != nil {
 		return bill, errors_handler.MapDBErrors(err)
 	}

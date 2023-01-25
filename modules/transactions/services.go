@@ -1,6 +1,7 @@
 package transactions
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -66,9 +67,56 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 
 // CreateTransaction will throw an error when person_id is zero uuid and
 // will always creates a pending bill when the property block_zero_person is set to true,
-// otherwise it should register a transaction with zero person uuid, and it will not create a new pending bill
-// This function is used by two separate handlers
+// otherwise in case of use of zero person uuid,t should register a transaction with zero person uuid,
+// and it will not create a new pending bill
 func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero_person bool) (Transaction, error) {
+	tr := Transaction{}
+	tx, err := database.DB.Begin()
+	if err != nil {
+		tx.Rollback()
+		return tr, fmt.Errorf(errors_handler.DB002)
+	}
+
+	tr, err = createTransaction(tx, fields, person_id, block_zero_person)
+	if err != nil {
+		tx.Rollback()
+		return tr, err
+	}
+
+	// create pending bill from transaction
+	billFields := bills.BillFields{
+		PersonId:            tr.PersonId,
+		Date:                tr.Date,
+		Description:         tr.Description,
+		Currency:            tr.Currency,
+		Amount:              tr.Amount,
+		ParentTransactionId: tr.ID,
+		ParentBillCrossId:   uuid.UUID{},
+	}
+
+	bill_id := uuid.UUID{}
+	row := tx.QueryRow("INSERT INTO pending_bills (person_id, date, description, currency, amount, parent_transaction_id, parent_bill_cross_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;", billFields.PersonId, billFields.Date, billFields.Description, billFields.Currency, billFields.Amount, billFields.ParentTransactionId, billFields.ParentBillCrossId)
+	err = row.Scan(&bill_id)
+	if err != nil {
+		return tr, errors_handler.MapDBErrors(err)
+	}
+
+	row = tx.QueryRow("UPDATE transactions SET pending_bill_id = $1 WHERE id = $2 RETURNING pending_bill_id;", bill_id, tr.ID)
+	err = row.Scan(&tr.PendingBillId)
+	if err != nil {
+		return tr, errors_handler.MapDBErrors(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return tr, fmt.Errorf(errors_handler.DB003)
+	}
+	return tr, nil
+}
+
+// This function is used by two separate handlers
+func createTransaction(tx *sql.Tx, fields TransactionFields, person_id uuid.UUID, block_zero_person bool) (Transaction, error) {
 	tr := Transaction{}
 
 	personAccount, err := person_accounts.GetOnePersonAccount(fields.PersonAccountId)
@@ -116,11 +164,6 @@ func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero
 	var oldBalance float64 = 0
 	var updatedBalance float64 = 0
 
-	tx, err := database.DB.Begin()
-	if err != nil {
-		tx.Rollback()
-		return tr, fmt.Errorf(errors_handler.DB002)
-	}
 	row := tx.QueryRow(`SELECT balance FROM money_accounts WHERE id = $1;`, fields.AccountId)
 	err = row.Scan(&oldBalance)
 	if err != nil {
@@ -164,31 +207,6 @@ func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero
 	if err != nil {
 		errors_handler.HandleError(err)
 	}
-	// create pending bill from transaction
-	billFields := bills.BillFields{
-		PersonId:            tr.PersonId,
-		Date:                tr.Date,
-		Description:         tr.Description,
-		Currency:            tr.Currency,
-		Amount:              tr.Amount,
-		ParentTransactionId: tr.ID,
-		ParentBillCrossId:   uuid.UUID{},
-	}
-
-	bill_id := uuid.UUID{}
-	row = tx.QueryRow("INSERT INTO pending_bills (person_id, date, description, currency, amount, parent_transaction_id, parent_bill_cross_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;", billFields.PersonId, billFields.Date, billFields.Description, billFields.Currency, billFields.Amount, billFields.ParentTransactionId, billFields.ParentBillCrossId)
-	err = row.Scan(&bill_id)
-	if err != nil {
-		return tr, errors_handler.MapDBErrors(err)
-	}
-
-	row = tx.QueryRow("UPDATE transactions SET pending_bill_id = $1 WHERE id = $2 RETURNING pending_bill_id;", bill_id, tr.ID)
-	err = row.Scan(&tr.PendingBillId)
-	if err != nil {
-		return tr, errors_handler.MapDBErrors(err)
-	}
-
-	tx.Commit()
 
 	return tr, nil
 }

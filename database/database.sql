@@ -93,7 +93,7 @@ CREATE TABLE bill_cross (
 
 INSERT INTO bill_cross (id, person_id, currency, balance) VALUES (uuid_nil(), uuid_nil(), '000', 0);
 
-CREATE TYPE bill_status AS ENUM ('PENDING', 'SOLVED', 'REVERTED', 'GROUPED');
+CREATE TYPE bill_status AS ENUM ('PENDING', 'SOLVED', 'REVERTED');
 
 -- to pay: has amount negative
 -- to charge: has amount positive
@@ -135,7 +135,6 @@ CREATE TABLE closed_bills (
   -- one of these should be not null
   transaction_id uuid,
   bill_cross_id uuid,
-  revert_transaction_id uuid,
   --
   post_notes VARCHAR,
   created_at TIMESTAMPTZ DEFAULT NOW(), 
@@ -145,8 +144,7 @@ CREATE TABLE closed_bills (
   FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id),
   FOREIGN KEY (parent_bill_cross_id) REFERENCES bill_cross(id),
   FOREIGN KEY (transaction_id) REFERENCES transactions(id),
-  FOREIGN KEY (bill_cross_id) REFERENCES bill_cross(id),
-  FOREIGN KEY (revert_transaction_id) REFERENCES transactions(id)
+  FOREIGN KEY (bill_cross_id) REFERENCES bill_cross(id)
 );
 
 INSERT INTO closed_bills (id, person_id, description, currency, amount, transaction_id, bill_cross_id)

@@ -13,9 +13,8 @@ type Bill struct {
 	Status     string    `json:"status"`
 	BillFields
 	// Only closed by one of these
-	TransactionId       uuid.UUID `json:"transaction_id"`
-	BillCrossId         uuid.UUID `json:"bill_cross_id"`
-	RevertTransactionId uuid.UUID `json:"revert_transaction_id"`
+	TransactionId uuid.UUID `json:"transaction_id"`
+	BillCrossId   uuid.UUID `json:"bill_cross_id"`
 	// Only after closed
 	PostNotes string `json:"post_notes"`
 	// timestamps
