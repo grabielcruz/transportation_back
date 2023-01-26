@@ -72,7 +72,7 @@ func CreateTransactionHandler(w http.ResponseWriter, r *http.Request, ps httprou
 		common.SendValidationError(w, err.Error())
 		return
 	}
-	transaction, err = CreateTransaction(fields, person_id, true)
+	transaction, err = CreateTransaction(fields, person_id)
 	if err != nil {
 		common.SendServiceError(w, err.Error())
 		return

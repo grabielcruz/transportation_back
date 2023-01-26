@@ -40,6 +40,10 @@ func TestTransactionsHandlers(t *testing.T) {
 	person, err := persons.CreatePerson(persons.GeneratePersonFields())
 	assert.Nil(t, err)
 
+	// give initial balance to account for outcomming transactions
+	_, err = money_accounts.SetAccountsBalance(account.ID, initial_balance)
+	assert.Nil(t, err)
+
 	t.Run("Get a transaction response with zero transactions initially", func(t *testing.T) {
 		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, config.Offset)
 		req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -57,7 +61,7 @@ func TestTransactionsHandlers(t *testing.T) {
 
 	t.Run("Create one transaction with a person", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
 
@@ -80,7 +84,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, 1, transations.Count)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Create one transaction with a person and a person account, then delete the person account", func(t *testing.T) {
@@ -93,7 +97,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		//
 
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.PersonAccountId = newPersonAccount.ID
 		err = json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -138,7 +142,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, newTransaction.ID, obtainedTransaction.ID)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	person_accounts.DeleteAllPersonAccounts()
 	deleteAllTransactions()
 
@@ -146,7 +150,7 @@ func TestTransactionsHandlers(t *testing.T) {
 	t.Run("Error when creating a transaction with an unexisting person account different than zero", func(t *testing.T) {
 		randId, err := uuid.NewRandom()
 		assert.Nil(t, err)
-		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		transactionFields.PersonAccountId = randId
 
 		buf := bytes.Buffer{}
@@ -178,7 +182,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		newPersonAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
 		assert.Nil(t, err)
 		//
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.PersonAccountId = newPersonAccount.ID
 
 		buf := bytes.Buffer{}
@@ -201,7 +205,7 @@ func TestTransactionsHandlers(t *testing.T) {
 
 	t.Run("Error when creating a transaction with an unexisting account", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(uuid.UUID{})
+		fields := GenerateRandomTransactionFields(uuid.UUID{})
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
 
@@ -220,7 +224,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "TR001", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when create a transaction with invalid json fields", func(t *testing.T) {
@@ -244,7 +248,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "UM001", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when create a transaction with bad ids", func(t *testing.T) {
@@ -268,13 +272,14 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "UI001", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when generating negative balance", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
-		fields.Amount *= -1
+		fields := GenerateOutgoingTransactionFields(account.ID)
+		// amount should be negative
+		fields.Amount = utility.RoundToTwoDecimalPlaces(fields.Amount - initial_balance)
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
 
@@ -293,12 +298,12 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "TR002", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when sending empty description", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Description = ""
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -318,12 +323,12 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when sending zero amount", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Amount = float64(0)
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -343,12 +348,12 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "VA001", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when sending negative fee", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Fee = -0.1
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -368,12 +373,12 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "TR009", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when sending fee greater than one", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Fee = 1.05
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -393,12 +398,12 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, "TR009", errResponse.Code)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Create one transaction and get it in paginated response", func(t *testing.T) {
-		fields := GenerateTransactionFields(account.ID)
-		newTransaction, err := CreateTransaction(fields, person.ID, true)
+		fields := GenerateRandomTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(fields, person.ID)
 		assert.Nil(t, err)
 
 		url := fmt.Sprintf("/transactions/%v?limit=%v&offset=%v", account.ID.String(), config.Limit, config.Offset)
@@ -422,13 +427,13 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, newTransaction.AccountId, transactionsResponse.Transactions[0].AccountId)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Create a transaction without fee and get it with single response", func(t *testing.T) {
 		// creating
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Fee = 0
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -468,13 +473,13 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, newTransaction.PersonName, transaction.PersonName)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Create a transaction with fee and get it with single response", func(t *testing.T) {
 		// creating
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Fee = 0
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
@@ -514,12 +519,12 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, newTransaction.PersonName, transaction.PersonName)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when creating transaction without a person on pending bill url", func(t *testing.T) {
 		buf := bytes.Buffer{}
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		err := json.NewEncoder(&buf).Encode(fields)
 		assert.Nil(t, err)
 
@@ -554,13 +559,11 @@ func TestTransactionsHandlers(t *testing.T) {
 	})
 
 	t.Run("Generate 21 transactions and get them paginated", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(21)
-		for _, v := range amounts {
+		for i := 0; i < 21; i++ {
 			personId := person.ID
 
-			transactionFields := GenerateTransactionFields(account.ID)
-			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields, personId, true)
+			transactionFields := GenerateRandomTransactionFields(account.ID)
+			_, err := CreateTransaction(transactionFields, personId)
 			assert.Nil(t, err)
 		}
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
@@ -580,7 +583,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		// the first transaction should be the last executed one
 		assert.Equal(t, updatedAccount.Balance, transactionsResponse.Transactions[0].Balance)
 		assert.Len(t, transactionsResponse.Transactions, config.Limit)
-		assert.Equal(t, transactionsResponse.Count, 21)
+		assert.Equal(t, 21, transactionsResponse.Count)
 		assert.Equal(t, transactionsResponse.Limit, config.Limit)
 		assert.Equal(t, transactionsResponse.Offset, config.Offset)
 
@@ -621,13 +624,13 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, transactionsResponse.Offset, 20)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when creating a transaction without fee, delete it and then getting it", func(t *testing.T) {
-		fields := GenerateTransactionFields(account.ID)
+		fields := GenerateRandomTransactionFields(account.ID)
 		fields.Fee = 0
-		newTransaction, err := CreateTransaction(fields, person.ID, true)
+		newTransaction, err := CreateTransaction(fields, person.ID)
 		assert.Nil(t, err)
 
 		// pending bill
@@ -689,19 +692,19 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when creating a transaction with fee, delete it and then getting it", func(t *testing.T) {
-		fields := GenerateTransactionFields(account.ID)
-		newTransaction, err := CreateTransaction(fields, person.ID, true)
+		fields := GenerateOutgoingTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(fields, person.ID)
 		assert.Nil(t, err)
 
 		// pending bill
 		newPendingBill, err := bills.GetOneBill(newTransaction.PendingBillId)
 		assert.Nil(t, err)
 		assert.Equal(t, newPendingBill.ParentTransactionId, newTransaction.ID)
-		assert.LessOrEqual(t, newPendingBill.Amount, newTransaction.AmountWithFee)
+		assert.GreaterOrEqual(t, newPendingBill.Amount, newTransaction.AmountWithFee)
 		assert.Equal(t, newPendingBill.Amount, newTransaction.Amount) // fee 0
 		assert.Equal(t, newPendingBill.Date, newTransaction.Date)
 		assert.Equal(t, newPendingBill.Description, newTransaction.Description)
@@ -756,7 +759,7 @@ func TestTransactionsHandlers(t *testing.T) {
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when deleting last transaction with no transactions", func(t *testing.T) {
@@ -775,9 +778,8 @@ func TestTransactionsHandlers(t *testing.T) {
 	})
 
 	t.Run("Error when deleting pending bill associated with transaction", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		transactionFields.Fee = utility.GetRandomFee()
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		// this deletion should be forbidden
 		w := httptest.NewRecorder()
@@ -826,4 +828,28 @@ func TestTransactionsHandlers(t *testing.T) {
 	// at the end of all transactions services tests
 	money_accounts.DeleteAllMoneyAccounts()
 	persons.DeleteAllPersons()
+
+	t.Run("Error when positive transaction (incoming transaction) has a fee", func(t *testing.T) {
+		fields := GenerateIncomingTransactionFields(account.ID)
+		// force positive balance
+		fields.Amount = 500
+		// force fee
+		fields.Fee = 0.003
+		buf := bytes.Buffer{}
+		err := json.NewEncoder(&buf).Encode(fields)
+		assert.Nil(t, err)
+
+		w := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodPost, "/transaction_to_pending_bill/"+person.ID.String(), &buf)
+		assert.Nil(t, err)
+
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+
+		errResponse := errors_handler.ErrorResponse{}
+		err = json.Unmarshal(w.Body.Bytes(), &errResponse)
+		assert.Nil(t, err)
+		assert.Equal(t, errors_handler.TR014, errResponse.Error)
+		assert.Equal(t, "TR014", errResponse.Code)
+	})
 }

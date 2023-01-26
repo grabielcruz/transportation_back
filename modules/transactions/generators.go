@@ -7,11 +7,31 @@ import (
 	"github.com/grabielcruz/transportation_back/utility"
 )
 
-func GenerateTransactionFields(account_id uuid.UUID) TransactionFields {
+// GenerateRandomTransactionFields generates wheter a Incoming transaction
+// or a outgoing transaction. Fee number and amount sign diferentiates them
+func GenerateRandomTransactionFields(account_id uuid.UUID) TransactionFields {
+	if utility.GetRandomBoolean() {
+		return GenerateIncomingTransactionFields(account_id)
+	}
+	return GenerateOutgoingTransactionFields(account_id)
+}
+
+func GenerateIncomingTransactionFields(account_id uuid.UUID) TransactionFields {
 	fields := TransactionFields{
 		AccountId:   account_id,
 		Date:        time.Now(),
-		Amount:      utility.GetRandomBalance(),
+		Amount:      utility.GetRandomPositiveBalance(),
+		Fee:         0,
+		Description: utility.GetRandomString(55),
+	}
+	return fields
+}
+
+func GenerateOutgoingTransactionFields(account_id uuid.UUID) TransactionFields {
+	fields := TransactionFields{
+		AccountId:   account_id,
+		Date:        time.Now(),
+		Amount:      utility.GetRandomNegativeBalance(),
 		Fee:         utility.GetRandomFee(),
 		Description: utility.GetRandomString(55),
 	}

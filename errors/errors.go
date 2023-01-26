@@ -112,6 +112,13 @@ func MapServiceError(error_msg string) string {
 		return "TR010"
 	case TR011:
 		return "TR011"
+	case TR012:
+		return "TR012"
+	case TR013:
+		return "TR013"
+	case TR014:
+		return "TR014"
+
 	// bills
 	case BL001:
 		return "BL001"

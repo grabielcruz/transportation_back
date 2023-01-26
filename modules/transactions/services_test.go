@@ -17,6 +17,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// share between tests in this module
+const initial_balance = 6000000
+
 func TestTransactionServices(t *testing.T) {
 	envPath := filepath.Clean("../../.env_test")
 	sqlPath := filepath.Clean("../../database/database.sql")
@@ -24,6 +27,9 @@ func TestTransactionServices(t *testing.T) {
 	database.CreateTables(sqlPath)
 	defer database.CloseConnection()
 	account, err := money_accounts.CreateMoneyAccount(money_accounts.GenerateAccountFields())
+	assert.Nil(t, err)
+	// give initial balance to account for outcomming transactions
+	_, err = money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	assert.Nil(t, err)
 	person, err := persons.CreatePerson(persons.GeneratePersonFields())
 	assert.Nil(t, err)
@@ -40,8 +46,8 @@ func TestTransactionServices(t *testing.T) {
 	// test error when creating transaction without a person
 
 	t.Run("Create one transaction with a person", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(newTransaction.AccountId)
 		assert.Nil(t, err)
@@ -51,12 +57,12 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, newTransaction.PersonId, person.ID)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	// ESTE ES PERSON_ACOUNT
 	t.Run("Create one transaction with a person and a person account, then delete the person account", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		// person account
 		personAccountFields := person_accounts.GeneratePersonAccountFields()
 		// force same currency
@@ -65,7 +71,7 @@ func TestTransactionServices(t *testing.T) {
 		assert.Nil(t, err)
 		//
 		transactionFields.PersonAccountId = newPersonAccount.ID
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(newTransaction.AccountId)
 		assert.Nil(t, err)
@@ -87,7 +93,7 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, newTransaction, obtainedTransaction)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	person_accounts.DeleteAllPersonAccounts()
 	deleteAllTransactions()
 
@@ -95,9 +101,9 @@ func TestTransactionServices(t *testing.T) {
 	t.Run("Error when creating a transaction with an unexisting person account different than zero", func(t *testing.T) {
 		randId, err := uuid.NewRandom()
 		assert.Nil(t, err)
-		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		transactionFields.PersonAccountId = randId
-		_, err = CreateTransaction(transactionFields, person.ID, true)
+		_, err = CreateTransaction(transactionFields, person.ID)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.PA002, err.Error())
 	})
@@ -113,28 +119,28 @@ func TestTransactionServices(t *testing.T) {
 		newPersonAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
 		assert.Nil(t, err)
 		//
-		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		transactionFields.PersonAccountId = newPersonAccount.ID
-		_, err = CreateTransaction(transactionFields, person.ID, true)
+		_, err = CreateTransaction(transactionFields, person.ID)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR011, err.Error())
 	})
 
-	t.Run("Error when creating transaction with unexisting account", func(t *testing.T) {
+	t.Run("Error when creating a transaction with unexisting account", func(t *testing.T) {
 		zeroId := uuid.UUID{}
-		transactionFields := GenerateTransactionFields(zeroId)
-		_, err := CreateTransaction(transactionFields, zeroId, true)
+		transactionFields := GenerateRandomTransactionFields(zeroId)
+		_, err := CreateTransaction(transactionFields, zeroId)
 		assert.NotNil(t, err)
-		assert.Equal(t, errors_handler.TR001, err.Error())
+		assert.Equal(t, errors_handler.TR007, err.Error())
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when generating negative balance", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		transactionFields.Amount *= -1
-		_, err := CreateTransaction(transactionFields, person.ID, true)
+		money_accounts.SetAccountsBalance(account.ID, 0)
+		transactionFields := GenerateOutgoingTransactionFields(account.ID)
+		_, err := CreateTransaction(transactionFields, person.ID)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR002, err.Error())
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(transactionFields.AccountId)
@@ -143,12 +149,12 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, float64(0), updatedAccount.Balance)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Create one transaction and get it in paginated response", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		transactions, err := GetTransactions(account.ID, config.Limit, config.Offset)
 		assert.Nil(t, err)
@@ -158,12 +164,14 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, newTransaction, transactions.Transactions[0])
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
-	t.Run("Create one transaction without fee and get it with single response", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+	t.Run("Create one outgoing transaction without fee and get it with single response", func(t *testing.T) {
+		transactionFields := GenerateOutgoingTransactionFields(account.ID)
+		// force zero fee
+		transactionFields.Fee = 0
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		transaction, err := GetTransaction(newTransaction.ID)
 		assert.Nil(t, err)
@@ -190,13 +198,12 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, transaction.RevertBillId, uuid.UUID{})
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
-	t.Run("Create one transaction with fee and get it with single response", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		transactionFields.Fee = utility.GetRandomFee()
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+	t.Run("Create one outgoing transaction with fee and get it with single response", func(t *testing.T) {
+		transactionFields := GenerateOutgoingTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		transaction, err := GetTransaction(newTransaction.ID)
 		assert.Nil(t, err)
@@ -223,45 +230,13 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, transaction.RevertBillId, uuid.UUID{})
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
-	deleteAllTransactions()
-
-	t.Run("It should create transaction with person zero when not blocked", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		newTransaction, err := CreateTransaction(transactionFields, uuid.UUID{}, false)
-		assert.Nil(t, err)
-		transaction, err := GetTransaction(newTransaction.ID)
-		assert.Nil(t, err)
-		assert.Equal(t, newTransaction.ID, transaction.ID)
-		assert.Equal(t, newTransaction.AccountId, transaction.AccountId)
-		assert.Equal(t, newTransaction.Amount, transaction.Amount)
-		assert.Equal(t, newTransaction.Balance, transaction.Balance)
-		assert.Equal(t, newTransaction.CreatedAt, transaction.CreatedAt)
-		assert.Equal(t, newTransaction.UpdatedAt, transaction.UpdatedAt)
-		assert.Equal(t, newTransaction.Date, transaction.Date)
-		assert.Equal(t, newTransaction.Description, transaction.Description)
-		assert.Equal(t, newTransaction.PersonId, transaction.PersonId)
-		assert.Equal(t, newTransaction.PersonName, transaction.PersonName)
-		assert.Equal(t, newTransaction.Currency, account.Currency)
-		// fee stuff
-		assert.Equal(t, newTransaction.Fee, transaction.Fee)
-		assert.Equal(t, newTransaction.AmountWithFee, transaction.AmountWithFee)
-		assert.Equal(t, newTransaction.AmountWithFee, utility.RoundToTwoDecimalPlaces(newTransaction.Amount*(1+newTransaction.Fee)))
-		assert.Equal(t, transaction.AmountWithFee, utility.RoundToTwoDecimalPlaces(newTransaction.Amount*(1+newTransaction.Fee)))
-		// these uuids should be zero
-		assert.Equal(t, newTransaction.ClosedBillId, uuid.UUID{})
-		assert.Equal(t, newTransaction.RevertBillId, uuid.UUID{})
-		assert.Equal(t, transaction.ClosedBillId, uuid.UUID{})
-		assert.Equal(t, transaction.RevertBillId, uuid.UUID{})
-	})
-
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Error when creating transaction without a person when blocked", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		transactionFields.Fee = utility.GetRandomFee()
-		_, err := CreateTransaction(transactionFields, uuid.UUID{}, true)
+		_, err := CreateTransaction(transactionFields, uuid.UUID{})
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR007, err.Error())
 	})
@@ -280,39 +255,48 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
-	t.Run("Error when creating transaction with amount zero", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+	t.Run("Error when creating transactions with amount zero", func(t *testing.T) {
+		// incoming
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		transactionFields.Amount = float64(0)
-		_, err := CreateTransaction(transactionFields, person.ID, true)
+		_, err := CreateTransaction(transactionFields, person.ID)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR008, err.Error())
+
+		// outgoing
+		transactionFields = GenerateOutgoingTransactionFields(account.ID)
+		transactionFields.Amount = float64(0)
+		_, err = CreateTransaction(transactionFields, person.ID)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR008, err.Error())
 	})
 
-	t.Run("Error when creating transaction with negative fee", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+	t.Run("Error when creating outgoing transaction with negative fee", func(t *testing.T) {
+		transactionFields := GenerateOutgoingTransactionFields(account.ID)
 		transactionFields.Fee = -0.05
-		_, err := CreateTransaction(transactionFields, person.ID, true)
+		_, err := CreateTransaction(transactionFields, person.ID)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR009, err.Error())
 	})
 
-	t.Run("Error when creating transaction with a fee greater than one", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+	t.Run("Error when creating outgoing transaction with a fee greater than one", func(t *testing.T) {
+		transactionFields := GenerateOutgoingTransactionFields(account.ID)
 		transactionFields.Fee = 1.05
-		_, err := CreateTransaction(transactionFields, person.ID, true)
+		_, err := CreateTransaction(transactionFields, person.ID)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.TR009, err.Error())
 	})
 
 	t.Run("Execute 100 transactions without fee and get accounts balance right", func(t *testing.T) {
+		// 6000000 should be enough balance for this outgoing transactions
 		amounts := utility.GetSliceOfAmounts(100)
-		sum := utility.GetSumOfAmounts(amounts)
+		sum := utility.GetSumOfAmounts(amounts, initial_balance)
 		for _, v := range amounts {
 			personId := person.ID
-			transactionFields := GenerateTransactionFields(account.ID)
+			transactionFields := GenerateRandomTransactionFields(account.ID)
 			transactionFields.Fee = 0
 			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields, personId, true)
+			_, err := CreateTransaction(transactionFields, personId)
 			assert.Nil(t, err)
 		}
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
@@ -320,18 +304,20 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, sum, updatedAccount.Balance)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
-	t.Run("Execute 100 transactions with fee of 5% and get accounts balance right", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(100)
-		sum := utility.GetSumOfAmountsWithFee(amounts, 0.05)
+	t.Run("Execute 100 outgoing transactions with fee of 0.3% and get accounts balance right", func(t *testing.T) {
+		// againg, 6000000 should be enought for this outgoing transactions
+		// when fee is present, transactions should be negative
+		amounts := utility.GetSliceOfNegativeAmounts(100)
+		sum := utility.GetSumOfAmountsWithFee(amounts, 0.003, initial_balance)
 		for _, v := range amounts {
 			personId := person.ID
-			transactionFields := GenerateTransactionFields(account.ID)
+			transactionFields := GenerateOutgoingTransactionFields(account.ID)
 			transactionFields.Amount = v
-			transactionFields.Fee = 0.05
-			_, err := CreateTransaction(transactionFields, personId, true)
+			transactionFields.Fee = 0.003
+			_, err := CreateTransaction(transactionFields, personId)
 			assert.Nil(t, err)
 		}
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
@@ -339,17 +325,15 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, sum, updatedAccount.Balance)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Execute 10 transaction and the first transaction in the slice should be the last one executed", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(10)
-		for _, v := range amounts {
+		for i := 0; i < 10; i++ {
 			personId := person.ID
 
-			transactionFields := GenerateTransactionFields(account.ID)
-			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields, personId, true)
+			transactionFields := GenerateRandomTransactionFields(account.ID)
+			_, err := CreateTransaction(transactionFields, personId)
 			assert.Nil(t, err)
 		}
 		updatedAccount, err := money_accounts.GetOneMoneyAccount(account.ID)
@@ -359,31 +343,29 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, transactions.Transactions[0].Balance, updatedAccount.Balance)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Execute 51 transaction and get in last page the initial transaction, and count equal 51", func(t *testing.T) {
-		amounts := utility.GetSliceOfAmounts(51)
-		for _, v := range amounts {
+		for i := 0; i < 51; i++ {
 			personId := person.ID
-			transactionFields := GenerateTransactionFields(account.ID)
-			transactionFields.Amount = v
-			_, err := CreateTransaction(transactionFields, personId, true)
+			transactionFields := GenerateRandomTransactionFields(account.ID)
+			_, err := CreateTransaction(transactionFields, personId)
 			assert.Nil(t, err)
 		}
 		transactions, err := GetTransactions(account.ID, config.Limit, 50)
 		assert.Nil(t, err)
-		assert.Equal(t, transactions.Transactions[0].Balance, transactions.Transactions[0].AmountWithFee)
+		assert.Equal(t, utility.RoundToTwoDecimalPlaces(transactions.Transactions[0].Balance-float64(initial_balance)), transactions.Transactions[0].AmountWithFee)
 		assert.Equal(t, 51, transactions.Count)
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	t.Run("Create one transaction without fee, it creates a pending bill. When deletion, pending bill also is deleted", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		transactionFields.Fee = 0
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		// pending bill
 		newPendingBill, err := bills.GetOneBill(newTransaction.PendingBillId)
@@ -411,7 +393,7 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, newTransaction.Description, deletedLastTransaction.Description)
 		assert.Equal(t, newTransaction.PersonId, deletedLastTransaction.PersonId)
 		assert.Equal(t, newTransaction.PersonName, deletedLastTransaction.PersonName)
-		assert.Equal(t, float64(0), updatedAccount.Balance)
+		assert.Equal(t, float64(initial_balance), updatedAccount.Balance)
 		assert.Equal(t, newTransaction.Currency, account.Currency)
 		// these uuids should be zero
 		assert.Equal(t, newTransaction.ClosedBillId, uuid.UUID{})
@@ -433,20 +415,20 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
-	t.Run("Create one transaction with fee and delete it", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
+	t.Run("Create one outgoing transaction with fee and delete it", func(t *testing.T) {
+		transactionFields := GenerateOutgoingTransactionFields(account.ID)
 		transactionFields.Fee = utility.GetRandomFee()
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 
 		// pending bill
 		newPendingBill, err := bills.GetOneBill(newTransaction.PendingBillId)
 		assert.Nil(t, err)
 		assert.Equal(t, newPendingBill.ParentTransactionId, newTransaction.ID)
-		assert.LessOrEqual(t, newPendingBill.Amount, newTransaction.AmountWithFee)
+		assert.GreaterOrEqual(t, newPendingBill.Amount, newTransaction.AmountWithFee)
 		assert.Equal(t, newPendingBill.Amount, newTransaction.Amount)
 		assert.Equal(t, newPendingBill.Date, newTransaction.Date)
 		assert.Equal(t, newPendingBill.Description, newTransaction.Description)
@@ -466,7 +448,7 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, newTransaction.Description, deletedLastTransaction.Description)
 		assert.Equal(t, newTransaction.PersonId, deletedLastTransaction.PersonId)
 		assert.Equal(t, newTransaction.PersonName, deletedLastTransaction.PersonName)
-		assert.Equal(t, float64(0), updatedAccount.Balance)
+		assert.Equal(t, float64(initial_balance), updatedAccount.Balance)
 		assert.Equal(t, newTransaction.Currency, account.Currency)
 		// these uuids should be zero
 		assert.Equal(t, newTransaction.ClosedBillId, uuid.UUID{})
@@ -488,19 +470,18 @@ func TestTransactionServices(t *testing.T) {
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})
 
-	money_accounts.ResetAccountsBalance(account.ID)
+	money_accounts.SetAccountsBalance(account.ID, initial_balance)
 	deleteAllTransactions()
 
 	// ESTE ES PENDING ACCOUNT
 	t.Run("Create transaction with person account, then delete that last transaction", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		transactionFields.Fee = utility.GetRandomFee()
+		transactionFields := GenerateRandomTransactionFields(account.ID)
 		personAccountFields := person_accounts.GeneratePersonAccountFields()
 		personAccountFields.Currency = account.Currency
 		personAccount, err := person_accounts.CreatePersonAccount(person.ID, personAccountFields)
 		assert.Nil(t, err)
 		transactionFields.PersonAccountId = personAccount.ID
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		// delete account
 		id, err := DeleteLastTransaction()
@@ -517,9 +498,8 @@ func TestTransactionServices(t *testing.T) {
 	})
 
 	t.Run("Error when deleting pending bill associated with transaction", func(t *testing.T) {
-		transactionFields := GenerateTransactionFields(account.ID)
-		transactionFields.Fee = utility.GetRandomFee()
-		newTransaction, err := CreateTransaction(transactionFields, person.ID, true)
+		transactionFields := GenerateRandomTransactionFields(account.ID)
+		newTransaction, err := CreateTransaction(transactionFields, person.ID)
 		assert.Nil(t, err)
 		// this deletion should be forbidden
 		_, err = bills.DeleteBill(newTransaction.PendingBillId)
@@ -557,4 +537,15 @@ func TestTransactionServices(t *testing.T) {
 	// at the end of all transactions services tests
 	money_accounts.DeleteAllMoneyAccounts()
 	persons.DeleteAllPersons()
+
+	t.Run("Error when positive transaction (incoming transaction) has a fee", func(t *testing.T) {
+		fields := GenerateIncomingTransactionFields(account.ID)
+		// force positive balance
+		fields.Amount = 500
+		// force fee
+		fields.Fee = 0.003
+		_, err := CreateTransaction(fields, person.ID)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR014, err.Error())
+	})
 }

@@ -111,25 +111,43 @@ func CreatePendingBill(fields BillFields) (Bill, error) {
 }
 
 func GetOneBill(bill_id uuid.UUID) (Bill, error) {
-	b := Bill{}
-	if bill_id == (uuid.UUID{}) {
-		return b, fmt.Errorf(errors_handler.DB001)
-	}
-	row := database.DB.QueryRow("SELECT * FROM pending_bills WHERE id = $1;", bill_id)
-	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
-
-	// not found in pending_bills, look for it on closed bills
-	if err != nil {
-		row = database.DB.QueryRow("SELECT * FROM closed_bills WHERE id = $1;", bill_id)
-		err = row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
-		// bill not found anywhere
+	b, err := GetOnePendingBill(bill_id)
+	if err == nil {
+		b.PersonName, err = persons.GetPersonsName(b.PersonId)
 		if err != nil {
-			return b, fmt.Errorf(errors_handler.DB001)
+			errors_handler.HandleError(err)
 		}
+		return b, nil
 	}
-	b.PersonName, err = persons.GetPersonsName(b.PersonId)
+	// not found in pending_bills, look for it on closed bills
+	b, err = GetOneClosedBill(bill_id)
+	if err == nil {
+		b.PersonName, err = persons.GetPersonsName(b.PersonId)
+		if err != nil {
+			errors_handler.HandleError(err)
+		}
+		return b, nil
+	}
+	// bill not found anywhere
+	return b, err
+}
+
+func GetOnePendingBill(pending_bill_id uuid.UUID) (Bill, error) {
+	b := Bill{}
+	row := database.DB.QueryRow("SELECT * FROM pending_bills WHERE id = $1 AND id <> $2", pending_bill_id, uuid.UUID{})
+	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.CreatedAt, &b.UpdatedAt)
 	if err != nil {
-		errors_handler.HandleError(err)
+		return b, errors_handler.MapDBErrors(err)
+	}
+	return b, nil
+}
+
+func GetOneClosedBill(pending_bill_id uuid.UUID) (Bill, error) {
+	b := Bill{}
+	row := database.DB.QueryRow("SELECT * FROM closed_bills WHERE id = $1 AND id <> $2", pending_bill_id, uuid.UUID{})
+	err := row.Scan(&b.ID, &b.PersonId, &b.Date, &b.Description, &b.Status, &b.Currency, &b.Amount, &b.ParentTransactionId, &b.ParentBillCrossId, &b.TransactionId, &b.BillCrossId, &b.PostNotes, &b.CreatedAt, &b.UpdatedAt)
+	if err != nil {
+		return b, errors_handler.MapDBErrors(err)
 	}
 	return b, nil
 }

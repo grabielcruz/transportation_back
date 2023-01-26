@@ -3,6 +3,7 @@ package transactions
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
@@ -65,11 +66,9 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 	return transactionResponse, nil
 }
 
-// CreateTransaction will throw an error when person_id is zero uuid and
-// will always creates a pending bill when the property block_zero_person is set to true,
-// otherwise in case of use of zero person uuid,t should register a transaction with zero person uuid,
-// and it will not create a new pending bill
-func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero_person bool) (Transaction, error) {
+// CreateTransaction  will always creates a pending bill alongside the transaction itself
+// with matching properties
+func CreateTransaction(fields TransactionFields, person_id uuid.UUID) (Transaction, error) {
 	tr := Transaction{}
 	tx, err := database.DB.Begin()
 	if err != nil {
@@ -77,7 +76,11 @@ func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero
 		return tr, fmt.Errorf(errors_handler.DB002)
 	}
 
-	tr, err = createTransaction(tx, fields, person_id, block_zero_person)
+	if person_id == (uuid.UUID{}) {
+		return tr, fmt.Errorf(errors_handler.TR007)
+	}
+
+	tr, err = createTransaction(tx, fields, person_id)
 	if err != nil {
 		tx.Rollback()
 		return tr, err
@@ -115,24 +118,89 @@ func CreateTransaction(fields TransactionFields, person_id uuid.UUID, block_zero
 	return tr, nil
 }
 
-// This function is used by two separate handlers
-func createTransaction(tx *sql.Tx, fields TransactionFields, person_id uuid.UUID, block_zero_person bool) (Transaction, error) {
+func ClosePendingBill(pending_bill_id uuid.UUID, account_id uuid.UUID, person_account_id uuid.UUID, date time.Time, fee float64) (bills.Bill, error) {
+	cb := bills.Bill{} // closed bill
+
+	pendingBill, err := bills.GetOnePendingBill(pending_bill_id)
+	if err != nil {
+		return cb, fmt.Errorf(errors_handler.TR012)
+	}
+	m_account, err := money_accounts.GetOneMoneyAccount(account_id)
+	if err != nil {
+		return cb, fmt.Errorf(errors_handler.TR013)
+	}
+	p_account, err := person_accounts.GetOnePersonAccount(person_account_id)
+	if err != nil {
+		return cb, fmt.Errorf(errors_handler.PA002)
+	}
+	// check currency
+	if m_account.Currency != p_account.Currency {
+		return cb, fmt.Errorf(errors_handler.TR011)
+	}
+	// check person account ownership
+	if p_account.PersonId != pendingBill.PersonId {
+		return cb, fmt.Errorf(errors_handler.TR010)
+	}
+	// all should be good!
+	transactionFields := TransactionFields{
+		AccountId:       account_id,
+		PersonAccountId: person_account_id,
+		Date:            date,
+		Amount:          pendingBill.Amount,
+		Fee:             fee,
+		Description:     pendingBill.Description,
+	}
+
+	tx, err := database.DB.Begin()
+	if err != nil {
+		tx.Rollback()
+		return cb, fmt.Errorf(errors_handler.DB002)
+	}
+
+	tr, err := createTransaction(tx, transactionFields, pendingBill.PersonId)
+	if err != nil {
+		tx.Rollback()
+		return cb, err
+	}
+	// transaction was a success, now move pending bill to closed bill
+	row := tx.QueryRow("INSERT INTO closed_bills (id, person_id, date, description, currency, amount, parent_transaction_id, parent_bill_cross_id, transaction_id, bill_cross_id, post_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;",
+		pendingBill.ID, pendingBill.PersonId, pendingBill.Date, pendingBill.Description, pendingBill.Currency, pendingBill.Amount, pendingBill.ParentTransactionId, pendingBill.ParentBillCrossId, tr.ID, uuid.UUID{}, "")
+	err = row.Scan(&cb.ID, &cb.PersonId, &cb.Date, &cb.Description, &cb.Status, &cb.Currency, &cb.Amount, &cb.ParentTransactionId, &cb.ParentBillCrossId, &cb.TransactionId, &cb.BillCrossId, &cb.PostNotes, &cb.CreatedAt, &cb.UpdatedAt)
+	if err != nil {
+		return cb, errors_handler.MapDBErrors(err)
+	}
+	// delete transaction from pending bills
+	deletedId := uuid.UUID{}
+	row = tx.QueryRow("DELETE FROM pending_bills WHERE id = $1 AND id <> $2 RETURNING id;", pendingBill.ID, uuid.UUID{})
+	err = row.Scan(&deletedId)
+	if err != nil {
+		return cb, errors_handler.MapDBErrors(err)
+	}
+	// check that the correct id whas created
+	if deletedId != pendingBill.ID {
+		return cb, fmt.Errorf(errors_handler.TR013)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return cb, fmt.Errorf(errors_handler.DB003)
+	}
+	return cb, err
+}
+
+// This function might be used by two separate handlers
+func createTransaction(tx *sql.Tx, fields TransactionFields, person_id uuid.UUID) (Transaction, error) {
 	tr := Transaction{}
 
 	personAccount, err := person_accounts.GetOnePersonAccount(fields.PersonAccountId)
 	if err != nil {
 		// error valid only when the id is not null
 		if fields.PersonAccountId != (uuid.UUID{}) {
-			return tr, err
+			return tr, fmt.Errorf(errors_handler.PA002)
 		}
 	}
 
 	if fields.AccountId == (uuid.UUID{}) {
 		return tr, fmt.Errorf(errors_handler.TR001)
-	}
-
-	if block_zero_person && person_id == (uuid.UUID{}) {
-		return tr, fmt.Errorf(errors_handler.TR007)
 	}
 
 	if fields.Amount == float64(0) {
@@ -141,6 +209,11 @@ func createTransaction(tx *sql.Tx, fields TransactionFields, person_id uuid.UUID
 
 	if fields.Fee < float64(0) || fields.Fee > float64(1) {
 		return tr, fmt.Errorf(errors_handler.TR009)
+	}
+
+	// positive (incoming transaction) should not have a fee
+	if fields.Amount > 0 && fields.Fee > 0 {
+		return tr, fmt.Errorf(errors_handler.TR014)
 	}
 
 	transactionCurrency, err := money_accounts.GetAccountsCurrency(fields.AccountId)

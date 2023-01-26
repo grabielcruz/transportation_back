@@ -156,7 +156,7 @@ func TestMoneyAccountServices(t *testing.T) {
 		newMoneyAccount, err := CreateMoneyAccount(GenerateAccountFields())
 		assert.Nil(t, err)
 		newBalance := utility.GetRandomBalance()
-		updatedId, err := setAccountsBalance(newMoneyAccount.ID, newBalance)
+		updatedId, err := SetAccountsBalance(newMoneyAccount.ID, newBalance)
 		assert.Nil(t, err)
 		assert.Equal(t, newMoneyAccount.ID, updatedId.ID)
 		updatedAccount, err := GetOneMoneyAccount(newMoneyAccount.ID)
@@ -170,14 +170,14 @@ func TestMoneyAccountServices(t *testing.T) {
 		// with zero uuid
 		zeroID := uuid.UUID{}
 		newBalance := utility.GetRandomBalance()
-		_, err := setAccountsBalance(zeroID, newBalance)
+		_, err := SetAccountsBalance(zeroID, newBalance)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
 
 		// with random uuid
 		randId, err := uuid.NewRandom()
 		assert.Nil(t, err)
-		_, err = setAccountsBalance(randId, newBalance)
+		_, err = SetAccountsBalance(randId, newBalance)
 		assert.NotNil(t, err)
 		assert.Equal(t, errors_handler.DB001, err.Error())
 	})

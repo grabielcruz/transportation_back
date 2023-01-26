@@ -115,11 +115,11 @@ func DeleteOneMoneyAccount(account_id uuid.UUID) (common.ID, error) {
 // ResetAccountsBalance sets the accounts with the specify id to zero
 func ResetAccountsBalance(account_id uuid.UUID) (common.ID, error) {
 	newBalance := float64(0)
-	id, err := setAccountsBalance(account_id, newBalance)
+	id, err := SetAccountsBalance(account_id, newBalance)
 	return id, err
 }
 
-func setAccountsBalance(account_id uuid.UUID, balance float64) (common.ID, error) {
+func SetAccountsBalance(account_id uuid.UUID, balance float64) (common.ID, error) {
 	id := common.ID{}
 	if account_id == (uuid.UUID{}) {
 		return id, fmt.Errorf(errors_handler.DB001)

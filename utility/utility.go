@@ -93,6 +93,15 @@ func GenerateDummyData() DummyType {
 	return dummy
 }
 
+func GetSliceOfNegativeAmounts(total int) []float64 {
+	nums := []float64{}
+	for i := 1; i < total+1; i++ {
+		f := math.Abs(getRandomFloat64()*10) * -1
+		nums = append(nums, f)
+	}
+	return nums
+}
+
 func GetSliceOfAmounts(total int) []float64 {
 	nums := []float64{}
 	for i := 1; i < total+1; i++ {
@@ -106,16 +115,16 @@ func GetSliceOfAmounts(total int) []float64 {
 	return nums
 }
 
-func GetSumOfAmounts(nums []float64) float64 {
-	sum := float64(0)
+func GetSumOfAmounts(nums []float64, intitalAmount float64) float64 {
+	sum := float64(intitalAmount)
 	for i := 0; i < len(nums); i++ {
 		sum = RoundToTwoDecimalPlaces(sum + RoundToTwoDecimalPlaces(nums[i]))
 	}
 	return sum
 }
 
-func GetSumOfAmountsWithFee(nums []float64, fee float64) float64 {
-	sum := float64(0)
+func GetSumOfAmountsWithFee(nums []float64, fee float64, initialAmount float64) float64 {
+	sum := float64(initialAmount)
 	for i := 0; i < len(nums); i++ {
 		amount := RoundToTwoDecimalPlaces(RoundToTwoDecimalPlaces(nums[i]) * RoundToTwoDecimalPlaces(1+fee))
 		sum = RoundToTwoDecimalPlaces(sum + amount)
