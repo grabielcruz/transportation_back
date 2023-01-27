@@ -176,7 +176,7 @@ func ClosePendingBill(pending_bill_id uuid.UUID, account_id uuid.UUID, person_ac
 	if err != nil {
 		return cb, errors_handler.MapDBErrors(err)
 	}
-	// check that the correct id whas created
+	// check that the correct id whas deleted from pendin bills and created in the closed bills table
 	if deletedId != pendingBill.ID {
 		return cb, fmt.Errorf(errors_handler.TR013)
 	}
