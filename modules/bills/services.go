@@ -86,6 +86,7 @@ func GetPendingBills(person_id uuid.UUID, to_pay bool, to_charge bool, limit int
 
 	err = tx.Commit()
 	if err != nil {
+		tx.Rollback()
 		return billResponse, fmt.Errorf(errors_handler.DB003)
 	}
 	return billResponse, nil

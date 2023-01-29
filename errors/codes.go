@@ -54,7 +54,7 @@ const TR006 = "New balance and updated balance missmatch, oldBalance = %v, newBa
 const TR007 = "Transaction should have a person"
 const TR008 = "Transaction should have an amount different from zero"
 const TR009 = "Fee should be between 0 and 1"
-const TR010 = "Person's account does not belong to the person specified"
+const TR010 = "Person's account does not belong to the person specified on bill"
 const TR011 = "Currency's mismatch"
 const TR012 = "Money account does not exist"
 const TR013 = "Pending bill does not exist"

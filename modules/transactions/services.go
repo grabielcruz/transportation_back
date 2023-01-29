@@ -60,6 +60,7 @@ func GetTransactions(account_id uuid.UUID, limit int, offset int) (TransationRes
 
 	err = tx.Commit()
 	if err != nil {
+		tx.Rollback()
 		return transactionResponse, fmt.Errorf(errors_handler.DB003)
 	}
 
@@ -134,7 +135,7 @@ func ClosePendingBill(pending_bill_id uuid.UUID, account_id uuid.UUID, person_ac
 		return cb, fmt.Errorf(errors_handler.PA002)
 	}
 	// check currency
-	if m_account.Currency != p_account.Currency {
+	if m_account.Currency != p_account.Currency || m_account.Currency != pendingBill.Currency {
 		return cb, fmt.Errorf(errors_handler.TR011)
 	}
 	// check person account ownership
@@ -169,7 +170,7 @@ func ClosePendingBill(pending_bill_id uuid.UUID, account_id uuid.UUID, person_ac
 	if err != nil {
 		return cb, errors_handler.MapDBErrors(err)
 	}
-	// delete transaction from pending bills
+	// delete bill from pending bills
 	deletedId := uuid.UUID{}
 	row = tx.QueryRow("DELETE FROM pending_bills WHERE id = $1 AND id <> $2 RETURNING id;", pendingBill.ID, uuid.UUID{})
 	err = row.Scan(&deletedId)
@@ -182,12 +183,13 @@ func ClosePendingBill(pending_bill_id uuid.UUID, account_id uuid.UUID, person_ac
 	}
 	err = tx.Commit()
 	if err != nil {
+		tx.Rollback()
 		return cb, fmt.Errorf(errors_handler.DB003)
 	}
 	return cb, err
 }
 
-// This function might be used by two separate handlers
+// This function might be used by more than one method
 func createTransaction(tx *sql.Tx, fields TransactionFields, person_id uuid.UUID) (Transaction, error) {
 	tr := Transaction{}
 
@@ -350,6 +352,7 @@ func DeleteLastTransaction() (Transaction, error) {
 
 	err = tx.Commit()
 	if err != nil {
+		tx.Rollback()
 		return lT, fmt.Errorf(errors_handler.DB003)
 	}
 

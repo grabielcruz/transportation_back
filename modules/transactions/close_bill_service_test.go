@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/grabielcruz/transportation_back/database"
 	errors_handler "github.com/grabielcruz/transportation_back/errors"
 	"github.com/grabielcruz/transportation_back/modules/bills"
+	"github.com/grabielcruz/transportation_back/modules/currencies"
 	"github.com/grabielcruz/transportation_back/modules/money_accounts"
 	"github.com/grabielcruz/transportation_back/modules/person_accounts"
 	"github.com/grabielcruz/transportation_back/modules/persons"
@@ -26,6 +28,7 @@ func TestCloseBillService(t *testing.T) {
 	assert.Nil(t, err)
 	person, err := persons.CreatePerson(persons.GeneratePersonFields())
 	assert.Nil(t, err)
+
 	p_account_fields := person_accounts.GeneratePersonAccountFields()
 
 	// froce same currency on m_account and p_account
@@ -34,6 +37,8 @@ func TestCloseBillService(t *testing.T) {
 	assert.Nil(t, err)
 
 	money_accounts.SetAccountsBalance(m_account.ID, initial_balance)
+	_, err = currencies.CreateCurrency("ABC")
+	assert.Nil(t, err)
 
 	t.Run("Create pending bill and close it, zero fee", func(t *testing.T) {
 		// this bill could be wheter to pay (negative) or to charge (positive)
@@ -154,4 +159,104 @@ func TestCloseBillService(t *testing.T) {
 	deleteAllTransactions()
 	bills.EmptyBills()
 	money_accounts.SetAccountsBalance(m_account.ID, initial_balance)
+
+	t.Run("Error when closing unexisting pending bill", func(t *testing.T) {
+		// zero uuid
+		_, err = ClosePendingBill(uuid.UUID{}, m_account.ID, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR012, err.Error())
+
+		// rand uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = ClosePendingBill(randId, m_account.ID, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR012, err.Error())
+	})
+
+	t.Run("Error when closing pending bill with unexisting money account", func(t *testing.T) {
+		billFields := bills.GenerateBillToChargeFields(person.ID)
+		// force same currency
+		billFields.Currency = m_account.Currency
+
+		pendingBill, err := bills.CreatePendingBill(billFields)
+		assert.Nil(t, err)
+		// zero uuid
+		_, err = ClosePendingBill(pendingBill.ID, uuid.UUID{}, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR013, err.Error())
+
+		// rand uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = ClosePendingBill(pendingBill.ID, randId, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR013, err.Error())
+	})
+
+	t.Run("Error when closing pending bill with unexisting person account", func(t *testing.T) {
+		billFields := bills.GenerateBillToChargeFields(person.ID)
+		// force same currency
+		billFields.Currency = m_account.Currency
+
+		pendingBill, err := bills.CreatePendingBill(billFields)
+		assert.Nil(t, err)
+		// zero uuid
+		_, err = ClosePendingBill(pendingBill.ID, m_account.ID, uuid.UUID{}, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.PA002, err.Error())
+
+		// rand uuid
+		randId, err := uuid.NewRandom()
+		assert.Nil(t, err)
+		_, err = ClosePendingBill(pendingBill.ID, m_account.ID, randId, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.PA002, err.Error())
+	})
+
+	t.Run("Error when there is currency missmatch between money account and person account", func(t *testing.T) {
+		p_account_fields := person_accounts.GeneratePersonAccountFields()
+
+		// froce different currency on m_account and p_account
+		p_account_fields.Currency = "ABC"
+		p_account, err := person_accounts.CreatePersonAccount(person.ID, p_account_fields)
+		assert.Nil(t, err)
+		billFields := bills.GenerateBillToChargeFields(person.ID)
+		// force same currency
+		billFields.Currency = m_account.Currency
+
+		pendingBill, err := bills.CreatePendingBill(billFields)
+		assert.Nil(t, err)
+
+		_, err = ClosePendingBill(pendingBill.ID, m_account.ID, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR011, err.Error())
+	})
+
+	t.Run("Error when there is currency missmatch between money account and pending bill", func(t *testing.T) {
+		billFields := bills.GenerateBillToChargeFields(person.ID)
+		// force different currency
+		billFields.Currency = "ABC"
+
+		pendingBill, err := bills.CreatePendingBill(billFields)
+		assert.Nil(t, err)
+
+		_, err = ClosePendingBill(pendingBill.ID, m_account.ID, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR011, err.Error())
+	})
+
+	t.Run("Error when pending bill and person account have a different owner", func(t *testing.T) {
+		person2, err := persons.CreatePerson(persons.GeneratePersonFields())
+		assert.Nil(t, err)
+		billFields := bills.GenerateBillToChargeFields(person2.ID)
+		// force same currency
+		billFields.Currency = m_account.Currency
+		pendingBill, err := bills.CreatePendingBill(billFields)
+		assert.Nil(t, err)
+
+		_, err = ClosePendingBill(pendingBill.ID, m_account.ID, p_account.ID, time.Now(), 0.003)
+		assert.NotNil(t, err)
+		assert.Equal(t, errors_handler.TR010, err.Error())
+	})
 }
